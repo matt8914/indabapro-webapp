@@ -11,6 +11,21 @@ export const metadata = {
   metadataBase: new URL(defaultUrl),
   title: "IndabaPro - School Readiness & Scholastic Assessments",
   description: "Helping schools efficiently track and analyze student assessment data",
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
+  openGraph: {
+    title: "IndabaPro - School Readiness & Scholastic Assessments",
+    description: "Helping schools efficiently track and analyze student assessment data",
+    images: ['/opengraph-image.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "IndabaPro - School Readiness & Scholastic Assessments",
+    description: "Helping schools efficiently track and analyze student assessment data",
+    images: ['/twitter-image.png'],
+  },
 };
 
 const geistSans = Geist({
