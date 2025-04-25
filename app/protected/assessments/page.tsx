@@ -365,7 +365,7 @@ export default function AssessmentsPage() {
                     Calculate Standardized Scores
                   </Button>
                 </div>
-              </div>
+      </div>
             </Card>
           )}
         </TabsContent>

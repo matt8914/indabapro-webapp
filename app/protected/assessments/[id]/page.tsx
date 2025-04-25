@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 // Updated typing to match Next.js 15 expectations
-type PageProps = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+// type PageProps = {
+//   params: { id: string };
+//   searchParams: { [key: string]: string | string[] | undefined };
+// }
 
-export default async function AssessmentDetailsPage({ params }: PageProps) {
+// export default async function AssessmentDetailsPage({ params }: PageProps) {
+export default async function AssessmentDetailsPage({ params }: { params: { id: string } }) {
   const supabase = await createClient();
 
   const {
