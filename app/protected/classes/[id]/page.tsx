@@ -5,17 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus, BarChart2, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Define the page props to include the id parameter and search params
-interface ClassDetailsPageProps {
-  params: {
-    id: string;
-  };
-  searchParams: {
-    tab?: string;
-  };
+// Updated typing to match Next.js 15 expectations
+type PageProps = {
+  params: { id: string };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
-export default async function ClassDetailsPage({ params, searchParams }: ClassDetailsPageProps) {
+export default async function ClassDetailsPage({ params, searchParams }: PageProps) {
   const supabase = await createClient();
 
   const {

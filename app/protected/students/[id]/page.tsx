@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, User } from "lucide-react";
 
-interface StudentPageProps {
-  params: {
-    id: string;
-  };
+// Updated typing to match Next.js 15 expectations
+type PageProps = {
+  params: { id: string };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
-export default async function StudentPage({ params }: StudentPageProps) {
+export default async function StudentPage({ params }: PageProps) {
   const supabase = await createClient();
 
   const {
