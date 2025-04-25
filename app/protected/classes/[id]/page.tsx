@@ -6,12 +6,12 @@ import { ArrowLeft, UserPlus, BarChart2, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Updated typing to match Next.js 15 expectations
-type PageProps = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+// type PageProps = {
+//   params: { id: string };
+//   searchParams: { [key: string]: string | string[] | undefined };
+// }
 
-export default async function ClassDetailsPage({ params, searchParams }: PageProps) {
+export default async function ClassDetailsPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const supabase = await createClient();
 
   const {
@@ -22,18 +22,21 @@ export default async function ClassDetailsPage({ params, searchParams }: PagePro
     return redirect("/sign-in");
   }
 
+  const { id } = await params;
+  const resolvedSearch = await searchParams;
+
   // Get the active tab from search params or default to "students"
-  const activeTab = searchParams.tab === "assessments" || searchParams.tab === "reports" 
-    ? searchParams.tab 
+  const activeTab = resolvedSearch.tab === "assessments" || resolvedSearch.tab === "reports" 
+    ? resolvedSearch.tab 
     : "students";
 
   // Mock data for the class
   const classData = {
-    id: params.id,
-    className: `Grade ${params.id === "1" ? "3A" : params.id === "2" ? "4B" : "3C"}`,
-    gradeLevel: params.id === "2" ? "4" : "3",
+    id: id,
+    className: `Grade ${id === "1" ? "3A" : id === "2" ? "4B" : "3C"}`,
+    gradeLevel: id === "2" ? "4" : "3",
     year: "2025",
-    studentCount: params.id === "1" ? 28 : params.id === "2" ? 32 : 27
+    studentCount: id === "1" ? 28 : id === "2" ? 32 : 27
   };
 
   // Mock data for students
@@ -69,7 +72,7 @@ export default async function ClassDetailsPage({ params, searchParams }: PagePro
             <Link href="#">Manage Assessments</Link>
           </Button>
           <Button asChild className="bg-[#f6822d] hover:bg-orange-600 flex items-center gap-1">
-            <Link href={`/protected/students/new?class=${params.id}`}>
+            <Link href={`/protected/students/new?class=${id}`}>
               <UserPlus className="h-4 w-4" />
               Add Student
             </Link>

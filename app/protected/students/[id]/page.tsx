@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, User } from "lucide-react";
 
 // Updated typing to match Next.js 15 expectations
-type PageProps = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+// type PageProps = {
+//   params: { id: string };
+//   searchParams: { [key: string]: string | string[] | undefined };
+// }
 
-export default async function StudentPage({ params }: PageProps) {
+export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const {
@@ -59,17 +60,17 @@ export default async function StudentPage({ params }: PageProps) {
   };
 
   // Create default data for any student ID not in our dictionary
-  const studentInfo = studentData[params.id] || {
-    id: params.id,
-    fullName: params.id === "S20250002" ? "Michael Smith" : 
-              params.id === "S20250003" ? "Sophia Williams" : 
-              params.id === "S20250004" ? "Daniel Brown" : 
-              params.id === "S20250005" ? "Olivia Miller" :
-              "Student " + params.id,
+  const studentInfo = studentData[id] || {
+    id: id,
+    fullName: id === "S20250002" ? "Michael Smith" : 
+              id === "S20250003" ? "Sophia Williams" : 
+              id === "S20250004" ? "Daniel Brown" : 
+              id === "S20250005" ? "Olivia Miller" :
+              "Student " + id,
     class: "Grade 3A",
     school: "Springfield Elementary",
     place: "Cape Town",
-    gender: params.id.endsWith("2") || params.id.endsWith("4") || params.id.endsWith("6") || params.id.endsWith("8") || params.id.endsWith("0") ? "Male" : "Female",
+    gender: id.endsWith("2") || id.endsWith("4") || id.endsWith("6") || id.endsWith("8") || id.endsWith("0") ? "Male" : "Female",
     homeLanguage: "English",
     dateOfBirth: "2018-07-22",
     age: "6 years, 7 months",

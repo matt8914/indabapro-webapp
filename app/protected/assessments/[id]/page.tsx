@@ -11,7 +11,8 @@ import { ArrowLeft } from "lucide-react";
 // }
 
 // export default async function AssessmentDetailsPage({ params }: PageProps) {
-export default async function AssessmentDetailsPage({ params }: { params: { id: string } }) {
+export default async function AssessmentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: assessmentId } = await params;
   const supabase = await createClient();
 
   const {
@@ -24,7 +25,7 @@ export default async function AssessmentDetailsPage({ params }: { params: { id: 
 
   // Mock assessment data
   const assessment = {
-    id: params.id,
+    id: assessmentId,
     name: "ASB Assessment",
     date: "2025-05-10",
     tester: "Demo Teacher",

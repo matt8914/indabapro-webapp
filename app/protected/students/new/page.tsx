@@ -14,12 +14,13 @@ import {
 } from "@/components/ui/select";
 
 // Updated typing to match Next.js 15 expectations
-type PageProps = {
-  params: Record<string, string>;
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+// type PageProps = {
+//   params: Record<string, string>;
+//   searchParams: { [key: string]: string | string[] | undefined };
+// }
 
-export default async function NewStudentPage({ searchParams }: PageProps) {
+export default async function NewStudentPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedSearch = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -30,7 +31,7 @@ export default async function NewStudentPage({ searchParams }: PageProps) {
     return redirect("/sign-in");
   }
 
-  const classId = typeof searchParams.class === 'string' ? searchParams.class : "";
+  const classId = typeof resolvedSearch.class === 'string' ? resolvedSearch.class : "";
   
   // Mock data for the class if coming from a class page
   const classData = classId ? {
