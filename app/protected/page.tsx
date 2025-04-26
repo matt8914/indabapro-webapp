@@ -91,7 +91,7 @@ export default async function DashboardPage() {
             />
             <ActionCard
               label="Record new assessment"
-              href="/protected/assessments/new"
+              href="/protected/assessments?tab=record"
               icon={<BarChart2 className="h-5 w-5" />}
             />
           </div>

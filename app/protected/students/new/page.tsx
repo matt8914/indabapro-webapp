@@ -116,6 +116,90 @@ export default async function NewStudentPage({ searchParams }: { searchParams: P
             </div>
           </div>
           
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="school">School</Label>
+              <Input 
+                id="school" 
+                placeholder="School Name" 
+                defaultValue="Springfield Elementary"
+                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="place">Place</Label>
+              <Input 
+                id="place" 
+                placeholder="City/Town" 
+                defaultValue="Cape Town"
+                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Input 
+                id="dateOfBirth" 
+                type="date"
+                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="homeLanguage">Home Language</Label>
+              <Select>
+                <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
+                  <SelectValue placeholder="Select Language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="english">English</SelectItem>
+                  <SelectItem value="afrikaans">Afrikaans</SelectItem>
+                  <SelectItem value="xhosa">Xhosa</SelectItem>
+                  <SelectItem value="zulu">Zulu</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Special Needs/Problems</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="eyesight">Eyesight</Label>
+                <Input 
+                  id="eyesight" 
+                  placeholder="Eyesight issues (if any)"
+                  defaultValue="None" 
+                  className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="speech">Speech</Label>
+                <Input 
+                  id="speech" 
+                  placeholder="Speech issues (if any)"
+                  defaultValue="None" 
+                  className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="hearing">Hearing</Label>
+                <Input 
+                  id="hearing" 
+                  placeholder="Hearing issues (if any)"
+                  defaultValue="None"
+                  className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+                />
+              </div>
+            </div>
+          </div>
+          
           <div className="pt-4 flex justify-end gap-3">
             <Button variant="outline" asChild>
               <Link href={classId ? `/protected/classes/${classId}` : "/protected/students"}>
