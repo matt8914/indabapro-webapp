@@ -132,7 +132,7 @@ export default async function ClassDetailsPage({
             <Link href="#">Manage Assessments</Link>
           </Button>
           <Button asChild className="bg-[#f6822d] hover:bg-orange-600 flex items-center gap-1">
-            <Link href={`/protected/students/new?class=${id}&return_to=/protected/classes/${id}`}>
+            <Link href={`/protected/students/new?class=${id}`}>
               <UserPlus className="h-4 w-4" />
               Add Student
             </Link>
@@ -189,7 +189,7 @@ export default async function ClassDetailsPage({
               <p className="text-gray-500 mb-1">No students enrolled in this class yet.</p>
               <p className="text-gray-500 mb-4">Add students to get started.</p>
               <Button asChild className="bg-[#f6822d] hover:bg-orange-600">
-                <Link href={`/protected/students/new?class=${id}&return_to=/protected/classes/${id}`}>
+                <Link href={`/protected/students/new?class=${id}`}>
                   <UserPlus className="h-4 w-4 mr-1" />
                   Add Student
                 </Link>

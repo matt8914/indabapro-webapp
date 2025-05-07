@@ -8,6 +8,7 @@ interface ClassCardProps {
   year: string;
   studentCount: number;
   id: string;
+  teacher?: string;
 }
 
 export function ClassCard({
@@ -16,6 +17,7 @@ export function ClassCard({
   year,
   studentCount,
   id,
+  teacher = "Ms. Johnson",
 }: ClassCardProps) {
   return (
     <div className="bg-white overflow-hidden shadow-sm rounded-lg p-6">
@@ -24,6 +26,9 @@ export function ClassCard({
           <h3 className="text-xl font-medium text-gray-900">{className}</h3>
           <p className="text-sm text-gray-500 mt-1">
             Grade {gradeLevel} • {year}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Teacher: {teacher}
           </p>
         </div>
         

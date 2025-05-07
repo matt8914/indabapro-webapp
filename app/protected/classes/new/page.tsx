@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { createClassAction } from "@/app/actions";
 
-export default async function NewClassPage() {
+export default async function NewClassPage({ searchParams }: { searchParams: { message?: string; type?: string } }) {
   const supabase = await createClient();
 
   const {
@@ -27,13 +28,23 @@ export default async function NewClassPage() {
       </div>
       
       <div className="bg-white shadow-sm rounded-lg p-6 max-w-2xl">
-        <form className="space-y-6">
+        {searchParams?.message && (
+          <div className={`mb-4 p-3 rounded-md ${
+            searchParams?.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+          }`}>
+            {searchParams.message}
+          </div>
+        )}
+        
+        <form action={createClassAction} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="className">Class Name</Label>
             <Input 
               id="className" 
+              name="className"
               placeholder="e.g. Grade 3A" 
               className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+              required
             />
           </div>
           
@@ -42,8 +53,10 @@ export default async function NewClassPage() {
               <Label htmlFor="gradeLevel">Grade Level</Label>
               <Input 
                 id="gradeLevel" 
+                name="gradeLevel"
                 placeholder="e.g. 3" 
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+                required
               />
             </div>
             
@@ -51,11 +64,22 @@ export default async function NewClassPage() {
               <Label htmlFor="year">Year</Label>
               <Input 
                 id="year" 
+                name="year"
                 placeholder="e.g. 2025" 
                 defaultValue="2025"
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+                required
               />
             </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="teacherName">Class Teacher</Label>
+            <Input 
+              id="teacherName" 
+              placeholder="Enter teacher's name" 
+              className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+            />
           </div>
           
           <div className="pt-4 flex justify-end gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, LogOut } from "lucide-react";
@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSearchParams } from "next/navigation";
 
 type SidebarItem = {
   name: string;
@@ -24,8 +25,76 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPath }: SidebarProps) {
+  const searchParams = useSearchParams();
+  const classId = searchParams.get('classId');
+  const [userProfile, setUserProfile] = useState<{
+    first_name: string;
+    last_name: string;
+    school_name?: string;
+    initials: string;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Check if we're viewing a student from a class page
+  const isStudentFromClass = currentPath.includes("/protected/students/") && classId !== null;
+  
+  const supabase = createClient();
+  
+  useEffect(() => {
+    async function fetchUserProfile() {
+      try {
+        setIsLoading(true);
+        // Get the authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Get the user profile from the users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('first_name, last_name, school_id')
+            .eq('id', user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            return;
+          }
+          
+          let schoolName;
+          // If user has a school_id, fetch the school name
+          if (userData.school_id) {
+            const { data: schoolData, error: schoolError } = await supabase
+              .from('schools')
+              .select('name')
+              .eq('id', userData.school_id)
+              .single();
+              
+            if (!schoolError && schoolData) {
+              schoolName = schoolData.name;
+            }
+          }
+          
+          // Create initials from first and last name
+          const initials = `${userData.first_name.charAt(0)}${userData.last_name.charAt(0)}`;
+          
+          setUserProfile({
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            school_name: schoolName,
+            initials: initials
+          });
+        }
+      } catch (error) {
+        console.error('Error in fetching user profile:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchUserProfile();
+  }, [supabase]);
+
   const handleSignOut = async () => {
-    const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/";
   };
@@ -41,13 +110,13 @@ export function Sidebar({ currentPath }: SidebarProps) {
       name: "My Classes",
       icon: <BookOpen className="h-5 w-5" />,
       href: "/protected/classes",
-      current: currentPath.includes("/protected/classes"),
+      current: currentPath.includes("/protected/classes") || isStudentFromClass,
     },
     {
       name: "Students",
       icon: <Users className="h-5 w-5" />,
       href: "/protected/students",
-      current: currentPath.includes("/protected/students"),
+      current: currentPath.includes("/protected/students") && !isStudentFromClass,
     },
     {
       name: "Assessments",
@@ -99,20 +168,35 @@ export function Sidebar({ currentPath }: SidebarProps) {
             <div className="flex items-center cursor-pointer">
               <div className="flex-shrink-0">
                 <div className="flex items-center justify-center h-10 w-10 rounded-full bg-[#f6822d] text-white">
-                  DU
+                  {isLoading ? "..." : userProfile?.initials || "..."}
                 </div>
               </div>
               <div className="ml-3 text-left">
-                <p className="text-sm font-medium text-gray-700">Demo User</p>
-                <p className="text-xs font-medium text-gray-500">Demo School</p>
+                {isLoading ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-700">Loading...</p>
+                    <p className="text-xs font-medium text-gray-500">...</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-gray-700">
+                      {userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : "User"}
+                    </p>
+                    <p className="text-xs font-medium text-gray-500">
+                      {userProfile?.school_name || "No School"}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
+            <Link href="/protected/settings">
+              <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center gap-2 text-red-500">
               <LogOut className="h-4 w-4" />
               <span>Logout</span>

@@ -16,30 +16,51 @@ export default async function ClassesPage() {
     return redirect("/sign-in");
   }
 
-  // Mock data for demo purposes
-  const classes = [
-    {
-      id: "1",
-      className: "Grade 3A",
-      gradeLevel: "3",
-      year: "2025",
-      studentCount: 28
-    },
-    {
-      id: "2",
-      className: "Grade 4B",
-      gradeLevel: "4",
-      year: "2025",
-      studentCount: 32
-    },
-    {
-      id: "3",
-      className: "Grade 3C",
-      gradeLevel: "3",
-      year: "2025",
-      studentCount: 27
+  // Fetch classes taught by this teacher
+  const { data: classes, error: classesError } = await supabase
+    .from('classes')
+    .select(`
+      id,
+      class_name,
+      grade_level,
+      academic_year,
+      school_id,
+      teacher_id,
+      users(first_name, last_name)
+    `)
+    .eq('teacher_id', user.id)
+    .order('created_at', { ascending: false });
+
+  // Get student counts for each class
+  const classStudentCounts = new Map();
+  
+  if (classes && classes.length > 0) {
+    // For each class, fetch the count of enrolled students
+    for (const classItem of classes) {
+      const { count } = await supabase
+        .from('class_enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('class_id', classItem.id);
+      
+      classStudentCounts.set(classItem.id, count || 0);
     }
-  ];
+  }
+
+  // Format class data for display
+  const formattedClasses = classes?.map(classItem => {
+    const teacherName = classItem.users 
+      ? `${classItem.users.first_name} ${classItem.users.last_name}`
+      : 'Not Assigned';
+      
+    return {
+      id: classItem.id,
+      className: classItem.class_name,
+      gradeLevel: classItem.grade_level,
+      year: classItem.academic_year,
+      studentCount: classStudentCounts.get(classItem.id) || 0,
+      teacher: teacherName
+    };
+  }) || [];
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
@@ -57,9 +78,15 @@ export default async function ClassesPage() {
         </Button>
       </div>
       
-      {classes.length > 0 ? (
+      {classesError && (
+        <div className="bg-red-50 p-4 rounded-md text-red-500">
+          Failed to load classes: {classesError.message}
+        </div>
+      )}
+      
+      {formattedClasses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes.map((classItem) => (
+          {formattedClasses.map((classItem) => (
             <ClassCard
               key={classItem.id}
               id={classItem.id}
@@ -67,6 +94,7 @@ export default async function ClassesPage() {
               gradeLevel={classItem.gradeLevel}
               year={classItem.year}
               studentCount={classItem.studentCount}
+              teacher={classItem.teacher}
             />
           ))}
         </div>

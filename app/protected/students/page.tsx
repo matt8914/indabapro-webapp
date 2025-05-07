@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { Search, Plus } from "lucide-react";
+import { StudentsTable } from "@/components/students/students-table";
 
 export default async function StudentsPage() {
   const supabase = await createClient();
@@ -17,58 +18,102 @@ export default async function StudentsPage() {
     return redirect("/sign-in");
   }
 
-  // Mock data for students
-  const students = [
-    {
-      id: "S20250001",
-      name: "Emily Johnson",
-      class: "Grade 3A",
-      school: "Springfield Elementary",
-      gender: "Female",
-      lastAssessment: "2024-08-15",
-      progress: "Improving"
-    },
-    {
-      id: "S20250002",
-      name: "Michael Smith",
-      class: "Grade 3A",
-      school: "Springfield Elementary",
-      gender: "Male",
-      lastAssessment: "2024-08-14",
-      progress: "Steady"
-    },
-    {
-      id: "S20250003",
-      name: "Sophia Williams",
-      class: "Grade 3B",
-      school: "Springfield Elementary",
-      gender: "Female",
-      lastAssessment: "2024-08-12",
-      progress: "Struggling"
-    },
-    {
-      id: "S20250004",
-      name: "Daniel Brown",
-      class: "Grade 3B",
-      school: "Springfield Elementary",
-      gender: "Male",
-      lastAssessment: "2024-08-10",
-      progress: "Improving"
-    },
-    {
-      id: "S20250005",
-      name: "Olivia Miller",
-      class: "Grade 3C",
-      school: "Springfield Elementary",
-      gender: "Female",
-      lastAssessment: "2024-08-08",
-      progress: "Steady"
+  // Fetch user role and school
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role, school_id')
+    .eq('id', user.id)
+    .single();
+
+  // Get classes taught by this teacher
+  const { data: classes } = await supabase
+    .from('classes')
+    .select('id, class_name')
+    .eq('teacher_id', user.id);
+
+  // Get class IDs to use in the query
+  const classIds = classes?.map(c => c.id) || [];
+
+  // Get students enrolled in these classes
+  const { data: enrollments } = await supabase
+    .from('class_enrollments')
+    .select('student_id')
+    .in('class_id', classIds.length > 0 ? classIds : ['no-classes']);
+
+  // Get unique student IDs
+  const studentIds = [...new Set(enrollments?.map(e => e.student_id) || [])];
+
+  // Fetch student details
+  const { data: studentsData, error: studentsError } = await supabase
+    .from('students')
+    .select(`
+      id,
+      student_id,
+      first_name,
+      last_name,
+      gender,
+      school_id,
+      schools(name)
+    `)
+    .in('id', studentIds.length > 0 ? studentIds : ['no-students']);
+
+  // Fetch the class info for each student
+  const { data: classEnrollments } = await supabase
+    .from('class_enrollments')
+    .select(`
+      student_id,
+      classes(class_name)
+    `)
+    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students']);
+
+  // Fetch latest assessment data
+  const { data: progressData } = await supabase
+    .from('student_progress')
+    .select(`
+      student_id,
+      status,
+      last_assessment_date
+    `)
+    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
+    .order('last_assessment_date', { ascending: false });
+
+  // Create a map of student ID to their latest assessment
+  const progressMap = new Map();
+  progressData?.forEach(progress => {
+    if (!progressMap.has(progress.student_id)) {
+      progressMap.set(progress.student_id, progress);
     }
-  ];
+  });
+
+  // Create a map of student ID to their enrolled class
+  const classMap = new Map();
+  classEnrollments?.forEach(enrollment => {
+    if (enrollment.classes) {
+      classMap.set(enrollment.student_id, enrollment.classes.class_name);
+    }
+  });
+
+  // Transform data for the students table
+  const students = studentsData?.map(student => {
+    const progress = progressMap.get(student.id);
+    return {
+      id: student.student_id,
+      name: `${student.first_name} ${student.last_name}`,
+      class: classMap.get(student.id) || 'Not Assigned',
+      school: student.schools?.name || 'Unknown',
+      gender: student.gender,
+      lastAssessment: progress?.last_assessment_date || 'Not Assessed',
+      progress: progress?.status || 'Not Assessed'
+    };
+  }) || [];
 
   // Get unique classes for filter dropdown
-  const classesSet = new Set(students.map(student => student.class));
-  const classes = Array.from(classesSet);
+  const uniqueClasses: string[] = [];
+  students.forEach(student => {
+    if (student.class && !uniqueClasses.includes(student.class)) {
+      uniqueClasses.push(student.class);
+    }
+  });
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
@@ -97,57 +142,26 @@ export default async function StudentsPage() {
         <div>
           <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <option value="">All Classes</option>
-            {classes.map(classItem => (
+            {uniqueClasses.map(classItem => (
               <option key={classItem} value={classItem}>{classItem}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <div className="bg-white overflow-hidden shadow-sm rounded-lg">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left font-medium text-sm p-4">Student ID</th>
-                <th className="text-left font-medium text-sm p-4">Name</th>
-                <th className="text-left font-medium text-sm p-4">Class</th>
-                <th className="text-left font-medium text-sm p-4">School</th>
-                <th className="text-left font-medium text-sm p-4">Gender</th>
-                <th className="text-left font-medium text-sm p-4">Last Assessment</th>
-                <th className="text-left font-medium text-sm p-4">Progress</th>
-                <th className="text-left font-medium text-sm p-4">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="p-4">{student.id}</td>
-                  <td className="p-4 font-medium">{student.name}</td>
-                  <td className="p-4">{student.class}</td>
-                  <td className="p-4">{student.school}</td>
-                  <td className="p-4">{student.gender}</td>
-                  <td className="p-4">{student.lastAssessment}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      student.progress === 'Improving' ? 'bg-green-100 text-green-800' : 
-                      student.progress === 'Steady' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-orange-100 text-orange-800'
-                    }`}>
-                      {student.progress}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <Link href={`/protected/students/${student.id}`} className="text-[#f6822d] hover:text-orange-600">
-                      <ChevronRight className="h-5 w-5" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {studentsError && (
+        <div className="bg-red-50 p-4 rounded-md text-red-700">
+          Error loading students: {studentsError.message}
         </div>
-      </div>
+      )}
+
+      {students.length === 0 ? (
+        <div className="bg-white p-6 rounded-lg shadow-sm text-center">
+          <p className="text-gray-500">No students found. Add students to your class to get started.</p>
+        </div>
+      ) : (
+        <StudentsTable students={students} />
+      )}
     </div>
   );
 } 

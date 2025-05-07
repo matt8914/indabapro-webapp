@@ -12,19 +12,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { createStudentAction } from "@/app/actions";
 
-// Updated typing to match Next.js 15 expectations
-// type PageProps = {
-//   params: Record<string, string>;
-//   searchParams: { [key: string]: string | string[] | undefined };
-// }
-
-export default async function NewStudentPage({ 
-  searchParams 
-}: { 
-  searchParams: { [key: string]: string | string[] | undefined } 
-}) {
+export default async function EditStudentPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const { id } = await params;
+  const resolvedSearch = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -35,99 +26,82 @@ export default async function NewStudentPage({
     return redirect("/sign-in");
   }
 
-  // Get message and type from search params (for error display)
-  const message = searchParams?.message?.toString();
-  const type = searchParams?.type?.toString();
+  // Get the class ID from search params if available
+  const classId = typeof resolvedSearch.classId === 'string' ? resolvedSearch.classId : "";
   
-  // Get class ID from search params
-  const classId = typeof searchParams?.class === 'string' ? searchParams.class : undefined;
-  
-  // Get return_to path from search params for redirecting back after submission
-  const returnTo = typeof searchParams?.return_to === 'string' ? searchParams.return_to : undefined;
-  
-  // Fetch classes taught by this teacher for dropdown
-  const { data: classes, error: classesError } = await supabase
-    .from('classes')
-    .select(`
-      id,
-      class_name,
-      grade_level,
-      academic_year
-    `)
-    .eq('teacher_id', user.id)
-    .order('created_at', { ascending: false });
-  
-  // If a class ID was provided, fetch that class to make sure it exists and belongs to this teacher
-  let selectedClass = null;
-  if (classId) {
-    const { data: classData, error: classError } = await supabase
-      .from('classes')
-      .select(`
-        id,
-        class_name,
-        grade_level,
-        academic_year
-      `)
-      .eq('id', classId)
-      .eq('teacher_id', user.id)
-      .single();
-      
-    if (!classError && classData) {
-      selectedClass = classData;
-    }
-  }
+  // Determine the back link based on whether we came from a class page
+  const backLink = classId 
+    ? `/protected/students/${id}?classId=${classId}`
+    : `/protected/students/${id}`;
 
-  // Generate a new student ID based on the year
-  const newStudentId = `S${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
-  
-  // Get the teacher's school
-  const { data: userData } = await supabase
-    .from('users')
-    .select(`
-      school_id,
-      schools(
-        id,
-        name
-      )
-    `)
-    .eq('id', user.id)
-    .single();
-  
-  const schoolName = userData?.schools ? userData.schools.name : "Unknown School";
+  // Dictionary of mock student data, keyed by ID
+  const studentData: Record<string, any> = {
+    "S20250001": {
+      id: "S20250001",
+      firstName: "Emily",
+      lastName: "Johnson",
+      class: "1", // Grade 3A
+      school: "Springfield Elementary",
+      place: "Cape Town",
+      gender: "female",
+      homeLanguage: "english",
+      dateOfBirth: "2018-05-15",
+      specialNeeds: {
+        occupationalTherapy: "none",
+        speechTherapy: "recommended",
+        medication: "none",
+        counselling: "none"
+      }
+    },
+    // Add other students with similar data structure if needed
+  };
+
+  // Create default data for any student ID not in our dictionary
+  const studentInfo = studentData[id] || {
+    id: id,
+    firstName: id === "S20250002" ? "Michael" : 
+              id === "S20250003" ? "Sophia" : 
+              id === "S20250004" ? "Daniel" : 
+              id === "S20250005" ? "Olivia" :
+              "Student",
+    lastName: id === "S20250002" ? "Smith" : 
+              id === "S20250003" ? "Williams" : 
+              id === "S20250004" ? "Brown" : 
+              id === "S20250005" ? "Miller" :
+              id,
+    class: "1", // Grade 3A
+    school: "Springfield Elementary",
+    place: "Cape Town",
+    gender: id.endsWith("2") || id.endsWith("4") || id.endsWith("6") || id.endsWith("8") || id.endsWith("0") ? "male" : "female",
+    homeLanguage: "english",
+    dateOfBirth: "2018-07-22",
+    specialNeeds: {
+      occupationalTherapy: "none",
+      speechTherapy: "none",
+      medication: "none",
+      counselling: "none"
+    }
+  };
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
       <div className="flex items-center gap-2 mb-4">
         <Link 
-          href={returnTo || (classId ? `/protected/classes/${classId}` : "/protected/students")} 
+          href={backLink}
           className="text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Add New Student</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Edit Student Information</h1>
       </div>
       
       <div className="bg-white shadow-sm rounded-lg p-6 max-w-2xl">
-        {message && (
-          <div className={`mb-4 p-3 rounded-md ${
-            type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-          }`}>
-            {message}
-          </div>
-        )}
-        
-        <form action={createStudentAction} className="space-y-6">
-          {/* Hidden input to store return path */}
-          {returnTo && (
-            <input type="hidden" name="returnTo" value={returnTo} />
-          )}
-
+        <form className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="studentId">Student ID</Label>
             <Input 
               id="studentId" 
-              name="studentId"
-              defaultValue={newStudentId}
+              defaultValue={studentInfo.id}
               readOnly
               className="bg-gray-50"
             />
@@ -138,10 +112,9 @@ export default async function NewStudentPage({
               <Label htmlFor="firstName">First Name</Label>
               <Input 
                 id="firstName" 
-                name="firstName"
                 placeholder="First Name" 
+                defaultValue={studentInfo.firstName}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-                required
               />
             </div>
             
@@ -149,10 +122,9 @@ export default async function NewStudentPage({
               <Label htmlFor="lastName">Last Name</Label>
               <Input 
                 id="lastName" 
-                name="lastName"
                 placeholder="Last Name" 
+                defaultValue={studentInfo.lastName}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-                required
               />
             </div>
           </div>
@@ -160,7 +132,7 @@ export default async function NewStudentPage({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="gender">Gender</Label>
-              <Select name="gender">
+              <Select defaultValue={studentInfo.gender}>
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Gender" />
                 </SelectTrigger>
@@ -172,23 +144,15 @@ export default async function NewStudentPage({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="classId">Class</Label>
-              <Select name="classId" defaultValue={classId}>
+              <Label htmlFor="class">Class</Label>
+              <Select defaultValue={studentInfo.class}>
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classesError ? (
-                    <SelectItem value="">Error loading classes</SelectItem>
-                  ) : classes && classes.length > 0 ? (
-                    classes.map((classItem) => (
-                      <SelectItem key={classItem.id} value={classItem.id}>
-                        {classItem.class_name} ({classItem.academic_year})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="">No classes available</SelectItem>
-                  )}
+                  <SelectItem value="1">Grade 3A</SelectItem>
+                  <SelectItem value="2">Grade 4B</SelectItem>
+                  <SelectItem value="3">Grade 3C</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -199,9 +163,9 @@ export default async function NewStudentPage({
               <Label htmlFor="school">School</Label>
               <Input 
                 id="school" 
-                value={schoolName}
-                readOnly
-                className="bg-gray-50"
+                placeholder="School Name" 
+                defaultValue={studentInfo.school}
+                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
             
@@ -209,7 +173,8 @@ export default async function NewStudentPage({
               <Label htmlFor="place">Place</Label>
               <Input 
                 id="place" 
-                placeholder="Location"
+                placeholder="City/Town" 
+                defaultValue={studentInfo.place}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
@@ -220,15 +185,15 @@ export default async function NewStudentPage({
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
               <Input 
                 id="dateOfBirth" 
-                name="dateOfBirth"
                 type="date"
+                defaultValue={studentInfo.dateOfBirth}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="homeLanguage">Home Language</Label>
-              <Select name="homeLanguage">
+              <Select defaultValue={studentInfo.homeLanguage}>
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Language" />
                 </SelectTrigger>
@@ -244,70 +209,60 @@ export default async function NewStudentPage({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="specialNeeds">Special Needs/Notes</Label>
-            <Input 
-              id="specialNeeds" 
-              name="specialNeeds"
-              placeholder="Any special needs or notes" 
-              className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-            />
-          </div>
-          
-          <div className="space-y-4">
-            <Label>Support Services</Label>
+            <Label>Special Needs/Concerns</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="occupationalTherapy">Occupational Therapy</Label>
-                <Select name="occupationalTherapy" defaultValue="none">
+                <Select defaultValue={studentInfo.specialNeeds.occupationalTherapy}>
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="receiving">Receiving Support</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="speechTherapy">Speech and Language Therapy</Label>
-                <Select name="speechTherapy" defaultValue="none">
+                <Select defaultValue={studentInfo.specialNeeds.speechTherapy}>
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="receiving">Receiving Support</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="medication">Medication</Label>
-                <Select name="medication" defaultValue="none">
+                <Select defaultValue={studentInfo.specialNeeds.medication}>
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="receiving">Receiving Support</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="counselling">Counselling</Label>
-                <Select name="counselling" defaultValue="none">
+                <Select defaultValue={studentInfo.specialNeeds.counselling}>
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="receiving">Receiving Support</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -316,12 +271,12 @@ export default async function NewStudentPage({
           
           <div className="pt-4 flex justify-end gap-3">
             <Button variant="outline" asChild>
-              <Link href={classId ? `/protected/classes/${classId}` : "/protected/students"}>
+              <Link href={backLink}>
                 Cancel
               </Link>
             </Button>
             <Button type="submit" className="bg-[#f6822d] hover:bg-orange-600">
-              Register Student
+              Save Changes
             </Button>
           </div>
         </form>
