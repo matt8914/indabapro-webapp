@@ -13,9 +13,10 @@ import { resetPasswordAction, updateProfileAction } from "@/app/actions";
 export default async function SettingsPage({
   searchParams
 }: {
-  searchParams: { message?: string; type?: string }
+  searchParams: Promise<{ message?: string; type?: string }>
 }) {
   const supabase = await createClient();
+  const resolvedSearchParams = await searchParams;
 
   const {
     data: { user },
@@ -26,8 +27,8 @@ export default async function SettingsPage({
   }
 
   // Get success/error messages from search params
-  const message = searchParams.message;
-  const type = searchParams.type;
+  const message = resolvedSearchParams.message;
+  const type = resolvedSearchParams.type;
 
   // Get user profile data
   const { data: userData, error } = await supabase
