@@ -34,7 +34,7 @@ interface StudentData {
   first_name: string;
   last_name: string;
   gender: string;
-  date_of_birth?: string;
+  date_of_birth?: string | null;
   home_language: string;
   occupational_therapy?: string;
   speech_language_therapy?: string;

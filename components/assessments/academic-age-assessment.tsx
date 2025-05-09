@@ -27,7 +27,7 @@ interface Student {
   id: string;
   name: string;
   student_id?: string;
-  date_of_birth?: string;
+  date_of_birth?: string | null;
 }
 
 interface AcademicAgeScoresState {
