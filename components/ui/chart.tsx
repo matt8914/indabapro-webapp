@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Tooltip } from "recharts"
+import { Tooltip, TooltipProps } from "recharts"
 
 export interface ChartConfig {
   [key: string]: {
@@ -95,13 +95,18 @@ function ChartTooltipContent({
   )
 }
 
+// Define value and name types for Recharts components
+type ValueType = string | number | Array<string | number>
+type NameType = string | number
+
+// Update the interface to use proper types for Recharts Tooltip props
 interface ChartTooltipProps {
   variant?: "default"
   className?: string
   children?: React.ReactNode
   cursor?: boolean | object
   offset?: number
-  content?: React.ReactNode
+  content?: TooltipProps<ValueType, NameType>['content']
 }
 
 function ChartTooltip({
