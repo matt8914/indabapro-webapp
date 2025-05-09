@@ -22,12 +22,12 @@ type EnrollmentWithStudent = Tables<"class_enrollments"> & {
 //   searchParams: { [key: string]: string | string[] | undefined };
 // }
 
-export default async function ClassDetailsPage({ 
-  params, 
-  searchParams 
-}: { 
-  params: { id: string }, 
-  searchParams: { [key: string]: string | string[] | undefined } 
+export default async function ClassDetailsPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>,
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const supabase = await createClient();
 
@@ -39,11 +39,12 @@ export default async function ClassDetailsPage({
     return redirect("/sign-in");
   }
 
-  const { id } = params;
+  const { id } = await params; // Await params
+  const resolvedSearchParams = await searchParams; // Await searchParams
 
   // Get the active tab from search params or default to "students"
-  const activeTab = searchParams?.tab === "assessments" || searchParams?.tab === "reports" 
-    ? searchParams.tab as string
+  const activeTab = resolvedSearchParams?.tab === "assessments" || resolvedSearchParams?.tab === "reports"
+    ? resolvedSearchParams.tab as string
     : "students";
 
   // Fetch the class data from the database
