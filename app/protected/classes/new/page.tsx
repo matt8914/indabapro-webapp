@@ -7,8 +7,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClassAction } from "@/app/actions";
 
-export default async function NewClassPage({ searchParams }: { searchParams: { message?: string; type?: string } }) {
+export default async function NewClassPage({ searchParams }: { searchParams: Promise<{ message?: string; type?: string }> }) {
   const supabase = await createClient();
+  const resolvedSearchParams = await searchParams;
 
   const {
     data: { user },
@@ -28,11 +29,11 @@ export default async function NewClassPage({ searchParams }: { searchParams: { m
       </div>
       
       <div className="bg-white shadow-sm rounded-lg p-6 max-w-2xl">
-        {searchParams?.message && (
+        {resolvedSearchParams?.message && (
           <div className={`mb-4 p-3 rounded-md ${
-            searchParams?.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+            resolvedSearchParams?.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
           }`}>
-            {searchParams.message}
+            {resolvedSearchParams.message}
           </div>
         )}
         

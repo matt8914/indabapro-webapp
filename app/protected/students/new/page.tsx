@@ -23,9 +23,10 @@ import { createStudentAction } from "@/app/actions";
 export default async function NewStudentPage({ 
   searchParams 
 }: { 
-  searchParams: { [key: string]: string | string[] | undefined } 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
 }) {
   const supabase = await createClient();
+  const resolvedSearchParams = await searchParams; // Await searchParams
 
   const {
     data: { user },
@@ -36,14 +37,14 @@ export default async function NewStudentPage({
   }
 
   // Get message and type from search params (for error display)
-  const message = searchParams?.message?.toString();
-  const type = searchParams?.type?.toString();
+  const message = resolvedSearchParams?.message?.toString();
+  const type = resolvedSearchParams?.type?.toString();
   
   // Get class ID from search params
-  const classId = typeof searchParams?.class === 'string' ? searchParams.class : undefined;
+  const classId = typeof resolvedSearchParams?.class === 'string' ? resolvedSearchParams.class : undefined;
   
   // Get return_to path from search params for redirecting back after submission
-  const returnTo = typeof searchParams?.return_to === 'string' ? searchParams.return_to : undefined;
+  const returnTo = typeof resolvedSearchParams?.return_to === 'string' ? resolvedSearchParams.return_to : undefined;
   
   // Fetch classes taught by this teacher for dropdown
   const { data: classes, error: classesError } = await supabase
