@@ -17,8 +17,8 @@ interface ClassDetails {
 //   params: { id: string };
 // }
 
-export default async function EditClassPage({ params }: { params: { id: string } }) { // Use inline type for params
-  const { id: classId } = params;
+export default async function EditClassPage({ params }: { params: Promise<{ id: string }> }) { // Use inline type for params, now a Promise
+  const { id: classId } = await params; // Await the params
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
