@@ -12,11 +12,12 @@ interface ClassDetails {
   // Add other fields if necessary, e.g., teacher_id, school_id, if they are part of the form or needed for context
 }
 
-interface EditClassPageProps {
-  params: { id: string };
-}
+// Remove EditClassPageProps interface
+// interface EditClassPageProps {
+//   params: { id: string };
+// }
 
-export default async function EditClassPage({ params }: EditClassPageProps) {
+export default async function EditClassPage({ params }: { params: { id: string } }) { // Use inline type for params
   const { id: classId } = params;
   const supabase = await createClient();
 

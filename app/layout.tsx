@@ -12,8 +12,8 @@ export const metadata = {
   title: "IndabaPro - School Readiness & Scholastic Assessments",
   description: "Helping schools efficiently track and analyze student assessment data",
   icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
+    icon: '/images/indabapro logo.png',
+    apple: '/images/indabapro logo.png',
   },
   openGraph: {
     title: "IndabaPro - School Readiness & Scholastic Assessments",
