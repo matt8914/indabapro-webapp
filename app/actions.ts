@@ -4,6 +4,7 @@ import { encodedRedirect } from "@/utils/utils";
 import { createClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -407,3 +408,147 @@ export const createStudentAction = async (formData: FormData) => {
     );
   }
 };
+
+export async function deleteStudent(studentId: string) {
+  const supabase = await createClient();
+
+  if (!studentId) {
+    return { error: "Student ID is required." };
+  }
+
+  // Optional: Check if the user has permission to delete students
+  // This might involve checking user roles or ownership
+  // For now, we'll proceed assuming the user is authorized
+
+  const { error } = await supabase
+    .from("students")
+    .delete()
+    .eq("id", studentId);
+
+  if (error) {
+    console.error("Error deleting student:", error);
+    return { error: `Failed to delete student: ${error.message}` };
+  }
+
+  // Revalidate paths where student lists are shown
+  revalidatePath("/protected/students");
+  revalidatePath("/protected/classes", "layout"); // Revalidate all class detail pages
+
+  return { success: "Student deleted successfully." };
+}
+
+export async function archiveStudent(studentId: string) {
+  const supabase = await createClient();
+
+  if (!studentId) {
+    return { error: "Student ID is required." };
+  }
+
+  const { error } = await supabase
+    .from("students")
+    .update({ is_archived: true } as any)
+    .eq("id", studentId);
+
+  if (error) {
+    console.error("Error archiving student:", error);
+    return { error: `Failed to archive student: ${error.message}` };
+  }
+
+  // Revalidate paths where student lists are shown
+  revalidatePath("/protected/students");
+  revalidatePath("/protected/classes", "layout");
+
+  return { success: "Student archived successfully." };
+}
+
+export async function deleteClass(classId: string) {
+  const supabase = await createClient();
+
+  if (!classId) {
+    return { error: "Class ID is required." };
+  }
+
+  // Check if the user has permission (RLS policy should handle this, but good practice to double-check ownership if needed)
+  // For now, relying on the RLS policy: "Teachers can delete their own classes"
+
+  // Check if the class has any students enrolled
+  const { count, error: countError } = await supabase
+    .from('class_enrollments')
+    .select('*', { count: 'exact', head: true })
+    .eq('class_id', classId);
+
+  if (countError) {
+    console.error("Error counting students in class:", countError);
+    return { error: `Failed to check students in class: ${countError.message}` };
+  }
+
+  if (count !== null && count > 0) {
+    return { error: "Class cannot be deleted as it still has students enrolled. Please remove all students first." };
+  }
+
+  // Proceed to delete the class
+  const { error: deleteError } = await supabase
+    .from('classes')
+    .delete()
+    .eq('id', classId);
+
+  if (deleteError) {
+    console.error("Error deleting class:", deleteError);
+    return { error: `Failed to delete class: ${deleteError.message}` };
+  }
+
+  revalidatePath("/protected/classes");
+
+  return { success: "Class deleted successfully." };
+}
+
+export async function updateClass(formData: FormData) {
+  const supabase = await createClient();
+
+  const classId = formData.get("classId")?.toString();
+  const className = formData.get("className")?.toString();
+  const gradeLevel = formData.get("gradeLevel")?.toString();
+  const academicYear = formData.get("academicYear")?.toString();
+  // We get the original path to redirect back to, ensuring we go to the class details page
+  const originalPath = formData.get("originalPath")?.toString() || "/protected/classes";
+
+  if (!classId) {
+    return { error: "Class ID is missing." }; // Should not happen if form is set up correctly
+  }
+
+  if (!className || !gradeLevel || !academicYear) {
+    return { error: "Class Name, Grade Level, and Academic Year are required." };
+  }
+
+  // RLS policy `teachers_can_update_own_classes` will ensure only the owner can update.
+  const { data, error } = await supabase
+    .from('classes')
+    .update({
+      class_name: className,
+      grade_level: gradeLevel,
+      academic_year: academicYear,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', classId)
+    .select()
+    .single(); // Use single to get the updated record or null if not found/allowed
+
+  if (error) {
+    console.error("Error updating class:", error);
+    return { error: `Failed to update class: ${error.message}` };
+  }
+
+  if (!data) {
+    // This could happen if RLS prevented the update or the classId was invalid
+    return { error: "Failed to update class. Record not found or update not permitted." };
+  }
+
+  // Revalidate the paths to ensure fresh data is loaded
+  revalidatePath("/protected/classes"); // Revalidate the list of classes
+  revalidatePath(originalPath); // Revalidate the specific class page e.g. /protected/classes/[id]
+  revalidatePath(`/protected/classes/${classId}/edit`); // Revalidate the edit page itself
+
+  // Redirect back to the class details page (originalPath should be /protected/classes/[id])
+  // If originalPath wasn't correctly set to the class detail page, it defaults to /protected/classes
+  return redirect(originalPath);
+}

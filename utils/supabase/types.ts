@@ -339,6 +339,63 @@ export type Database = {
           },
         ]
       }
+      student_academic_ages: {
+        Row: {
+          id: string
+          student_id: string
+          session_id: string
+          test_type: string
+          raw_score: number
+          academic_age: string
+          chronological_age: string
+          age_difference: string
+          is_deficit: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          session_id: string
+          test_type: string
+          raw_score: number
+          academic_age: string
+          chronological_age: string
+          age_difference: string
+          is_deficit: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          session_id?: string
+          test_type?: string
+          raw_score?: number
+          academic_age?: string
+          chronological_age?: string
+          age_difference?: string
+          is_deficit?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_academic_ages_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_academic_ages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_progress: {
         Row: {
           assessment_type_id: string
@@ -513,5 +570,6 @@ export type AssessmentType = Database['public']['Tables']['assessment_types']['R
 export type AssessmentComponent = Database['public']['Tables']['assessment_components']['Row']
 export type AssessmentSession = Database['public']['Tables']['assessment_sessions']['Row']
 export type StudentAssessmentScore = Database['public']['Tables']['student_assessment_scores']['Row']
+export type StudentAcademicAge = Database['public']['Tables']['student_academic_ages']['Row']
 export type StudentProgress = Database['public']['Tables']['student_progress']['Row']
 export type ClassEnrollment = Database['public']['Tables']['class_enrollments']['Row'] 

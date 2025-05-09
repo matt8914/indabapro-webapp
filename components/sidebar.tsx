@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSearchParams } from "next/navigation";
+import { DataAccessError } from "@/utils/data-access";
 
 type SidebarItem = {
   name: string;
@@ -34,69 +35,186 @@ export function Sidebar({ currentPath }: SidebarProps) {
     initials: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Check if we're viewing a student from a class page
   const isStudentFromClass = currentPath.includes("/protected/students/") && classId !== null;
   
-  const supabase = createClient();
-  
   useEffect(() => {
+    let isMounted = true;  // For cleanup in case component unmounts during async operation
+    let retryCount = 0;
+    const maxRetries = 2;
+    
     async function fetchUserProfile() {
+      setIsLoading(true);
+      setError(null);
+      
       try {
-        setIsLoading(true);
-        // Get the authenticated user
-        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Fetching user profile, attempt:', retryCount + 1);
+        const supabase = createClient();
         
-        if (user) {
-          // Get the user profile from the users table
+        // Add timeout for auth request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        // Get the authenticated user
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        clearTimeout(timeoutId);
+        
+        if (authError) throw new DataAccessError(authError.message, 401);
+        if (!authData.user) throw new DataAccessError("No authenticated user found", 401);
+        
+        const user = authData.user;
+        
+        // Get the user profile from the users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('first_name, last_name, school_id')
+          .eq('id', user.id)
+          .single();
+          
+        if (userError) throw new DataAccessError(`Error fetching user data: ${userError.message}`, 500);
+        if (!userData) throw new DataAccessError("User profile not found", 404);
+        
+        let schoolName;
+        // If user has a school_id, fetch the school name
+        if (userData.school_id) {
+          const { data: schoolData, error: schoolError } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', userData.school_id)
+            .single();
+            
+          if (!schoolError && schoolData) {
+            schoolName = schoolData.name;
+          }
+        }
+        
+        // Create initials from first and last name
+        const initials = `${userData.first_name.charAt(0)}${userData.last_name.charAt(0)}`;
+        
+        if (isMounted) {
+          setUserProfile({
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            school_name: schoolName,
+            initials: initials.toUpperCase()
+          });
+          setError(null);
+        }
+      } catch (error) {
+        console.error('Error in fetching user profile:', error);
+        
+        if (!isMounted) return;
+        
+        // Retry on network errors or timeouts
+        if (retryCount < maxRetries && 
+           ((error instanceof Error && 
+             (error.message.includes('network') || 
+              error.message.includes('Failed to fetch') ||
+              error.message.includes('timed out'))) ||
+            (error instanceof DOMException && error.name === 'AbortError'))) {
+          retryCount++;
+          console.log(`Retrying user profile fetch (${retryCount}/${maxRetries})...`);
+          setTimeout(fetchUserProfile, 1000 * retryCount);
+          return;
+        }
+        
+        if (isMounted) {
+          setError(error instanceof DataAccessError ? error.message : "Failed to load user profile");
+          // Still set a placeholder profile with empty values
+          setUserProfile({
+            first_name: "User",
+            last_name: "",
+            initials: "U"
+          });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+    
+    fetchUserProfile();
+    
+    // Cleanup function to prevent state updates if component unmounts
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Still redirect even if there's an error
+      window.location.href = "/";
+    }
+  };
+
+  const handleRetryUserProfile = () => {
+    setIsLoading(true);
+    setError(null);
+    
+    // Force a re-render by updating state
+    setUserProfile(null);
+    
+    // Add a small delay before retrying
+    setTimeout(() => {
+      const fetchProfile = async () => {
+        try {
+          const supabase = createClient();
+          const { data: authData, error: authError } = await supabase.auth.getUser();
+          
+          if (authError) throw new DataAccessError(authError.message, 401);
+          if (!authData.user) throw new DataAccessError("No authenticated user found", 401);
+          
+          const user = authData.user;
+          
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('first_name, last_name, school_id')
             .eq('id', user.id)
             .single();
             
-          if (userError) {
-            console.error('Error fetching user data:', userError);
-            return;
-          }
+          if (userError) throw new DataAccessError(`Error fetching user data: ${userError.message}`, 500);
           
           let schoolName;
-          // If user has a school_id, fetch the school name
           if (userData.school_id) {
-            const { data: schoolData, error: schoolError } = await supabase
+            const { data: schoolData } = await supabase
               .from('schools')
               .select('name')
               .eq('id', userData.school_id)
               .single();
               
-            if (!schoolError && schoolData) {
+            if (schoolData) {
               schoolName = schoolData.name;
             }
           }
           
-          // Create initials from first and last name
           const initials = `${userData.first_name.charAt(0)}${userData.last_name.charAt(0)}`;
           
           setUserProfile({
             first_name: userData.first_name,
             last_name: userData.last_name,
             school_name: schoolName,
-            initials: initials
+            initials: initials.toUpperCase()
           });
+          setError(null);
+        } catch (error) {
+          console.error('Error retrying profile fetch:', error);
+          setError(error instanceof DataAccessError ? error.message : "Failed to load user profile");
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error in fetching user profile:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    fetchUserProfile();
-  }, [supabase]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
+      };
+      
+      fetchProfile();
+    }, 500);
   };
 
   const navigation: SidebarItem[] = [
@@ -176,6 +294,11 @@ export function Sidebar({ currentPath }: SidebarProps) {
                   <>
                     <p className="text-sm font-medium text-gray-700">Loading...</p>
                     <p className="text-xs font-medium text-gray-500">...</p>
+                  </>
+                ) : error ? (
+                  <>
+                    <p className="text-sm font-medium text-red-500">Error</p>
+                    <p className="text-xs font-medium text-gray-500 hover:underline cursor-pointer" onClick={handleRetryUserProfile}>Click to retry</p>
                   </>
                 ) : (
                   <>

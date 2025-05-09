@@ -43,12 +43,18 @@ export function ClassStudentsTable({ students, classId }: { students: Student[],
     }
   };
 
-  // Add mock data for last assessment and progress if not provided
-  const studentsWithData = students.map(student => ({
-    ...student,
-    lastAssessment: student.lastAssessment || `2024-08-${Math.floor(Math.random() * 20) + 1}`,
-    progress: student.progress || ['Improving', 'Steady', 'Struggling'][Math.floor(Math.random() * 3)]
-  }));
+  // Use a stable date for SSR compatibility instead of random values
+  const studentsWithData = students.map(student => {
+    // Create a deterministic "random" value based on the student ID
+    const idSum = student.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const day = (idSum % 20) + 1; // Generate a day between 1-20 based on student ID
+    
+    return {
+      ...student,
+      lastAssessment: student.lastAssessment || `2024-08-${day.toString().padStart(2, '0')}`,
+      progress: student.progress || ['Improving', 'Steady', 'Struggling'][idSum % 3]
+    };
+  });
   
   return (
     <div className="bg-white shadow-sm rounded-lg overflow-hidden">

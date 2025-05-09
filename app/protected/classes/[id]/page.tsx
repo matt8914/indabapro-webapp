@@ -4,7 +4,17 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, UserPlus, BarChart2, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ClassStudentsTable } from "@/components/classes/class-students-table";
+import { StudentsTable } from "@/components/students/students-table";
+import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
+import type { Database } from "../../../../../database.types"; // Import Database type
+
+// Helper type to extract Row types from the Database interface
+type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
+
+// Define a more specific type for enrollments with students
+type EnrollmentWithStudent = Tables<"class_enrollments"> & {
+  students: Pick<Tables<"students">, "id" | "first_name" | "last_name" | "gender" | "notes" | "date_of_birth"> | null;
+};
 
 // Updated typing to match Next.js 15 expectations
 // type PageProps = {
@@ -79,34 +89,128 @@ export default async function ClassDetailsPage({
         first_name,
         last_name,
         gender,
-        notes
+        notes,
+        date_of_birth
       )
     `)
-    .eq('class_id', id);
+    .eq('class_id', id)
+    .returns<EnrollmentWithStudent[]>(); // Specify the return type
 
-  // Format students for display
-  const students = enrollments?.map(enrollment => {
-    // Use type assertion to handle potential type error
-    const student = enrollment.students as any;
-    
-    if (!student) {
-      return {
-        id: '',
-        firstName: '',
-        lastName: '',
-        gender: 'Not specified',
-        notes: undefined
-      };
+  if (enrollmentsError) {
+    console.error("Error fetching enrollments:", enrollmentsError.message);
+    // Handle error appropriately, maybe return or show a message
+  }
+
+  // Get student IDs in this class for academic age fetching
+  const studentIdsInClass = enrollments
+    ?.map(e => e.students?.id)
+    .filter((id): id is string => id !== undefined && id !== null)
+    || [];
+  // console.log("Student IDs in class:", studentIdsInClass); // For debugging locally
+
+  // Fetch latest academic age assessments for these students
+  // === UNCOMMENTING ACADEMIC AGE FETCHING ===
+  
+  // 1. Maths
+  const { data: mathsAssessments } = await supabase
+    .from('student_academic_ages')
+    .select('student_id, academic_age, age_difference, is_deficit, created_at')
+    .eq('test_type', 'maths')
+    .in('student_id', studentIdsInClass.length > 0 ? studentIdsInClass : ['dummy-id'])
+    .order('created_at', { ascending: false });
+
+  // 2. Spelling
+  const { data: spellingAssessments } = await supabase
+    .from('student_academic_ages')
+    .select('student_id, academic_age, age_difference, is_deficit, created_at')
+    .eq('test_type', 'spelling')
+    .in('student_id', studentIdsInClass.length > 0 ? studentIdsInClass : ['dummy-id'])
+    .order('created_at', { ascending: false });
+
+  // 3. Reading
+  const { data: readingAssessments } = await supabase
+    .from('student_academic_ages')
+    .select('student_id, academic_age, age_difference, is_deficit, created_at')
+    .eq('test_type', 'reading')
+    .in('student_id', studentIdsInClass.length > 0 ? studentIdsInClass : ['dummy-id'])
+    .order('created_at', { ascending: false });
+  
+
+  // Create maps for the latest assessment of each type by student ID
+  const mathsMap = new Map();
+  mathsAssessments?.forEach(assessment => { // UNCOMMENTED
+    if (!mathsMap.has(assessment.student_id)) {
+      mathsMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
     }
+  });
+
+  const spellingMap = new Map();
+  spellingAssessments?.forEach(assessment => { // UNCOMMENTED
+    if (!spellingMap.has(assessment.student_id)) {
+      spellingMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
+    }
+  });
+
+  const readingMap = new Map();
+  readingAssessments?.forEach(assessment => { // UNCOMMENTED
+    if (!readingMap.has(assessment.student_id)) {
+      readingMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
+    }
+  });
+
+  // Get current date for chronological age calculation
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  // Define the student interface that matches the StudentsTable component
+  // This interface is defined in StudentsTable, but we need the shape for mapping
+  interface StudentForTable {
+    id: string;
+    name: string;
+    class: string; // Will be empty/dummy as it's not shown
+    gender: string;
+    chronologicalAge: string;
+    mathsAge: { academicAge: string | null; difference: string | null; isDeficit: boolean; };
+    spellingAge: { academicAge: string | null; difference: string | null; isDeficit: boolean; };
+    readingAge: { academicAge: string | null; difference: string | null; isDeficit: boolean; };
+  }
+
+  // Format students for the StudentsTable component
+  const studentsForTable: StudentForTable[] = enrollments?.map(enrollment => {
+    const student = enrollment.students; // No longer 'as any' if EnrollmentWithStudent is correct
+    
+    if (!student || !student.id) {
+      // This case should ideally not happen if enrollments are clean
+      return null; 
+    }
+
+    const chronologicalAge = student.date_of_birth 
+      ? formatChronologicalAge(calculateChronologicalAge(student.date_of_birth, currentDate, 'months'))
+      : 'N/A';
     
     return {
       id: student.id,
-      firstName: student.first_name,
-      lastName: student.last_name,
+      name: `${student.first_name} ${student.last_name}`,
+      class: '', // Class column is not shown, so this can be empty
       gender: student.gender || 'Not specified',
-      notes: student.notes
+      chronologicalAge,
+      mathsAge: mathsMap.get(student.id) || { academicAge: null, difference: null, isDeficit: false },
+      spellingAge: spellingMap.get(student.id) || { academicAge: null, difference: null, isDeficit: false },
+      readingAge: readingMap.get(student.id) || { academicAge: null, difference: null, isDeficit: false },
+      // notes: student.notes // notes is not part of StudentsTable's Student interface
     };
-  }).filter(student => student.id !== '') || [];
+  }).filter(student => student !== null) as StudentForTable[] || [];
 
   // Format teacher name
   const teacherName = classData.users 
@@ -182,8 +286,8 @@ export default async function ClassDetailsPage({
             </div>
           </div>
           
-          {students.length > 0 ? (
-            <ClassStudentsTable students={students} classId={id} />
+          {studentsForTable.length > 0 ? (
+            <StudentsTable students={studentsForTable} showClassColumn={false} />
           ) : (
             <div className="bg-white shadow-sm rounded-lg p-8 text-center">
               <p className="text-gray-500 mb-1">No students enrolled in this class yet.</p>

@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { convertToStandardizedScore } from "@/utils/assessment-utils";
+import { AcademicAgeAssessment } from "./academic-age-assessment";
 
 interface Student {
   id: string;
   name: string;
   student_id?: string;
+  date_of_birth?: string | null;
 }
 
 interface Component {
@@ -76,45 +78,135 @@ export function AssessmentRecordTab({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
+  const [sessionId, setSessionId] = useState<string>("");
+  
+  // Define academic age assessment types
+  const academicAgeTypes = [
+    "YOUNG Maths A Assessment",
+    "SPAR Reading Assessment",
+    "Schonell Spelling A"
+  ];
+  
+  // Check if current assessment is an academic age type
+  const isAcademicAgeAssessment = (): boolean => {
+    const currentType = getCurrentAssessmentType();
+    return currentType ? academicAgeTypes.includes(currentType.name) : false;
+  };
+  
+  // Get academic age test type
+  const getAcademicAgeType = (): 'maths' | 'reading' | 'spelling' | null => {
+    const currentType = getCurrentAssessmentType();
+    if (!currentType) return null;
+    
+    if (currentType.name === "YOUNG Maths A Assessment") return 'maths';
+    if (currentType.name === "SPAR Reading Assessment") return 'reading';
+    if (currentType.name === "Schonell Spelling A") return 'spelling';
+    
+    return null;
+  };
   
   // Fetch students for the selected class when class changes
   useEffect(() => {
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 2;
+    
     const fetchClassStudents = async () => {
       if (!selectedClass) {
         setClassStudents([]);
         return;
       }
       
+      setError(null);
+      
       try {
         const supabase = createClient();
         
-        // Get student IDs enrolled in the selected class
+        // Simplified fetch without abort controller
+        console.log(`Fetching enrollments for class ID: ${selectedClass}`);
         const { data: enrollments, error: enrollmentsError } = await supabase
           .from('class_enrollments')
           .select('student_id')
           .eq('class_id', selectedClass);
           
-        if (enrollmentsError) throw enrollmentsError;
-        
-        if (enrollments && enrollments.length > 0) {
-          // Filter students based on enrollments
-          const enrolledStudentIds = enrollments.map(enrollment => enrollment.student_id);
-          const filteredStudents = students.filter(student => 
-            enrolledStudentIds.includes(student.id)
-          );
+        // Handle enrollment fetch error
+        if (enrollmentsError) {
+          console.error('Error fetching class enrollments:', enrollmentsError);
           
-          setClassStudents(filteredStudents);
+          if (!isMounted) return;
+          
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying fetch (${retryCount}/${maxRetries})...`);
+            setTimeout(fetchClassStudents, 1000);
+            return;
+          }
+          
+          setError('Failed to load enrollments for this class');
+          return;
+        }
+        
+        // Check if we have enrollments
+        if (enrollments && enrollments.length > 0) {
+          // Extract student IDs
+          const enrolledStudentIds = enrollments.map(enrollment => enrollment.student_id);
+          console.log(`Found ${enrolledStudentIds.length} enrolled students`);
+          
+          // Fetch student details
+          const { data: studentData, error: studentError } = await supabase
+            .from('students')
+            .select('id, first_name, last_name, student_id, date_of_birth')
+            .in('id', enrolledStudentIds);
+            
+          if (studentError) {
+            console.error('Error fetching students:', studentError);
+            
+            if (!isMounted) return;
+            
+            setError('Failed to load students for this class');
+            return;
+          }
+          
+          if (!isMounted) return;
+          
+          const formattedStudents = studentData.map(student => ({
+            id: student.id,
+            name: `${student.first_name} ${student.last_name}`,
+            student_id: student.student_id,
+            date_of_birth: student.date_of_birth
+          }));
+          
+          // Safely set class students
+          setClassStudents(formattedStudents as Student[]);
         } else {
+          if (!isMounted) return;
           setClassStudents([]);
+          // Optional: You can display a message that no students are enrolled
+          console.log("No students enrolled in this class");
         }
       } catch (err) {
         console.error('Error fetching class students:', err);
+        
+        if (!isMounted) return;
+        
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Retrying fetch after error (${retryCount}/${maxRetries})...`);
+          setTimeout(fetchClassStudents, 1000);
+          return;
+        }
+        
         setError('Failed to load students for this class');
       }
     };
     
     fetchClassStudents();
-  }, [selectedClass, students]);
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedClass]);
 
   // Get the current assessment type based on selection
   const getCurrentAssessmentType = () => {
@@ -199,23 +291,11 @@ export function AssessmentRecordTab({
     : [];
   
   // Handle continue button click
-  const handleContinue = () => {
-    resetScores();
-    setShowScoreForm(true);
-  };
-  
-  // Handle back button click
-  const handleBack = () => {
-    setShowScoreForm(false);
-  };
-  
-  // Handle save scores
-  const handleSaveScores = async () => {
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
-    
+  const handleContinue = async () => {
+    // Create the assessment session first
     try {
+      setSubmitting(true);
+      setError(null);
       const supabase = createClient();
       
       // Create assessment session
@@ -226,12 +306,68 @@ export function AssessmentRecordTab({
           class_id: selectedClass,
           tester_id: userId,
           test_date: testDate,
-          remarks: remarks
+          remarks: ""
         })
         .select('id')
         .single();
         
-      if (sessionError) throw new Error(sessionError.message);
+      if (sessionError) {
+        console.error('Error creating assessment session:', sessionError);
+        setError(sessionError.message || 'Failed to create assessment session');
+        setSubmitting(false);
+        return;
+      }
+      
+      if (session && session.id) {
+        // Save session ID for the assessment forms
+        setSessionId(session.id);
+        
+        // Reset scores if not academic age assessment
+        if (!isAcademicAgeAssessment()) {
+          resetScores();
+        }
+        
+        setShowScoreForm(true);
+      } else {
+        setError('Failed to create assessment session - no session ID returned');
+      }
+      
+    } catch (err) {
+      console.error('Error creating assessment session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create assessment session');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Handle back button click
+  const handleBack = () => {
+    setShowScoreForm(false);
+  };
+
+  // Handle academic age assessment completion
+  const handleAcademicAgeComplete = () => {
+    setSuccess('Assessment scores saved successfully!');
+    
+    // Reset form
+    setSelectedClass("");
+    setSelectedCategory("");
+    setSelectedType("");
+    setTestDate("");
+    setRemarks("");
+    setScores({});
+    setSessionId("");
+    setShowScoreForm(false);
+  };
+  
+  // Handle save scores for regular assessments
+  const handleSaveScores = async () => {
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const supabase = createClient();
       
       // Prepare scores for insertion
       const scoresToInsert = [];
@@ -246,7 +382,7 @@ export function AssessmentRecordTab({
             const standardizedScore = convertToStandardizedScore(component.name, rawScoreNumber);
             
             scoresToInsert.push({
-              session_id: session.id,
+              session_id: sessionId,
               student_id: student.id,
               component_id: component.id,
               raw_score: rawScoreNumber,
@@ -265,6 +401,16 @@ export function AssessmentRecordTab({
         if (scoresError) throw new Error(scoresError.message);
       }
       
+      // Update session remarks if any
+      if (remarks) {
+        const { error: remarksError } = await supabase
+          .from('assessment_sessions')
+          .update({ remarks })
+          .eq('id', sessionId);
+          
+        if (remarksError) throw new Error(remarksError.message);
+      }
+      
       setSuccess('Assessment scores saved successfully!');
       
       // Reset form
@@ -274,6 +420,7 @@ export function AssessmentRecordTab({
       setTestDate("");
       setRemarks("");
       setScores({});
+      setSessionId("");
       setShowScoreForm(false);
       
     } catch (err) {
@@ -302,7 +449,7 @@ export function AssessmentRecordTab({
       )}
     
       {!showScoreForm ? (
-        <Card className="bg-white overflow-hidden shadow-sm rounded-lg p-6">
+        <Card className="bg-white overflow-hidden shadow-sm rounded-lg px-6 pt-6 pb-16">
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold">Assessment Details</h2>
@@ -437,7 +584,7 @@ export function AssessmentRecordTab({
                   >
                     {selectedType ? 
                       getCurrentAssessmentType()?.name || "" : 
-                      selectedCategory ? "Select type..." : "Select category first..."}
+                      (selectedCategory ? "Select type..." : "Select category first...")}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
@@ -504,114 +651,128 @@ export function AssessmentRecordTab({
               <Button 
                 className="bg-[#f6822d] hover:bg-orange-600"
                 onClick={handleContinue}
-                disabled={!selectedClass || !selectedCategory || !selectedType || !testDate}
+                disabled={!selectedClass || !selectedCategory || !selectedType || !testDate || submitting}
               >
-                Continue
+                {submitting ? 'Please wait...' : 'Continue'}
               </Button>
             </div>
           </div>
         </Card>
       ) : (
-        <Card className="bg-white overflow-hidden shadow-sm rounded-lg p-6">
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold">
-                  {getCurrentAssessmentType()?.name} - Raw Scores
-                </h2>
-                <div className="group relative">
-                  <Info size={16} className="text-gray-400 cursor-help" />
-                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs rounded p-2 w-64 z-50">
-                    Scores are standardized on a scale of 1-5 based on the ASB norm table. Each component has specific score ranges that map to standardized scores.
+        <>
+          {isAcademicAgeAssessment() && sessionId ? (
+            <AcademicAgeAssessment 
+              students={classStudents}
+              testType={getAcademicAgeType() as 'maths' | 'reading' | 'spelling'}
+              testTypeName={getCurrentAssessmentType()?.name || ""}
+              testDate={testDate}
+              sessionId={sessionId}
+              onSaveComplete={handleAcademicAgeComplete}
+              onCancel={handleBack}
+            />
+          ) : (
+            <Card className="bg-white overflow-hidden shadow-sm rounded-lg p-6">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-semibold">
+                      {getCurrentAssessmentType()?.name} - Raw Scores
+                    </h2>
+                    <div className="group relative">
+                      <Info size={16} className="text-gray-400 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs rounded p-2 w-64 z-50">
+                        Scores are standardized on a scale of 1-5 based on the ASB norm table. Each component has specific score ranges that map to standardized scores.
+                      </div>
+                    </div>
                   </div>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Enter the raw scores for each student. The system will automatically calculate standardized scores (1-5) based on the ASB norm table.
+                  </p>
                 </div>
-              </div>
-              <p className="text-gray-500 text-sm mt-1">
-                Enter the raw scores for each student. The system will automatically calculate standardized scores (1-5) based on the ASB norm table.
-              </p>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="py-4 px-2 text-left font-medium w-36">Student</th>
-                    {getOrderedComponents(getCurrentComponents()).map((component) => (
-                      <th key={component.id} className="py-4 px-2 text-center font-medium">
-                        <div className="text-sm">{component.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {component.name === 'Visual Perception' && '(0-10)'}
-                          {component.name === 'Spatial' && '(0-10)'}
-                          {component.name === 'Reasoning' && '(0-10)'}
-                          {component.name === 'Numerical' && '(0-10)'}
-                          {component.name === 'Gestalt' && '(0-100)'}
-                          {component.name === 'Co-ordination' && '(0-30)'}
-                          {component.name === 'Memory' && '(0-10)'}
-                          {component.name === 'Verbal Comprehension' && '(0-20)'}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {classStudents.length > 0 ? (
-                    classStudents.map((student) => (
-                      <tr key={student.id} className="border-b">
-                        <td className="py-4 px-2">{student.name}</td>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-4 px-2 text-left font-medium w-36">Student</th>
                         {getOrderedComponents(getCurrentComponents()).map((component) => (
-                          <td key={`${student.id}-${component.id}`} className="py-2 px-2">
-                            <Input
-                              type="number"
-                              className="w-full"
-                              min={component.min_score}
-                              max={component.max_score}
-                              value={scores[student.id]?.[component.id] || ""}
-                              onChange={(e) => handleScoreChange(student.id, component.id, e.target.value)}
-                            />
-                          </td>
+                          <th key={component.id} className="py-4 px-2 text-center font-medium">
+                            <div className="text-sm">{component.name}</div>
+                            <div className="text-xs text-gray-500">
+                              {component.name === 'Visual Perception' && '(0-10)'}
+                              {component.name === 'Spatial' && '(0-10)'}
+                              {component.name === 'Reasoning' && '(0-10)'}
+                              {component.name === 'Numerical' && '(0-10)'}
+                              {component.name === 'Gestalt' && '(0-100)'}
+                              {component.name === 'Co-ordination' && '(0-30)'}
+                              {component.name === 'Memory' && '(0-10)'}
+                              {component.name === 'Verbal Comprehension' && '(0-20)'}
+                            </div>
+                          </th>
                         ))}
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={getCurrentComponents().length + 1} className="py-4 px-2 text-center text-gray-500">
-                        No students enrolled in this class.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">Remarks/Notes</label>
-              <Textarea 
-                placeholder="Enter any remarks or notes about this assessment" 
-                className="min-h-[100px] w-full"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex justify-between pt-4">
-              <Button 
-                variant="outline"
-                onClick={handleBack}
-                className="border-gray-300"
-                disabled={submitting}
-              >
-                Back
-              </Button>
-              <Button 
-                className="bg-[#f6822d] hover:bg-orange-600"
-                onClick={handleSaveScores}
-                disabled={submitting}
-              >
-                {submitting ? 'Saving...' : 'Save Assessment Results'}
-              </Button>
-            </div>
-          </div>
-        </Card>
+                    </thead>
+                    <tbody>
+                      {classStudents.length > 0 ? (
+                        classStudents.map((student) => (
+                          <tr key={student.id} className="border-b">
+                            <td className="py-4 px-2">{student.name}</td>
+                            {getOrderedComponents(getCurrentComponents()).map((component) => (
+                              <td key={`${student.id}-${component.id}`} className="py-2 px-2">
+                                <Input
+                                  type="number"
+                                  className="w-full"
+                                  min={component.min_score}
+                                  max={component.max_score}
+                                  value={scores[student.id]?.[component.id] || ""}
+                                  onChange={(e) => handleScoreChange(student.id, component.id, e.target.value)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={getCurrentComponents().length + 1} className="py-4 px-2 text-center text-gray-500">
+                            No students enrolled in this class.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">Remarks/Notes</label>
+                  <Textarea 
+                    placeholder="Enter any remarks or notes about this assessment" 
+                    className="min-h-[100px] w-full"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    variant="outline"
+                    onClick={handleBack}
+                    className="border-gray-300"
+                    disabled={submitting}
+                  >
+                    Back
+                  </Button>
+                  <Button 
+                    className="bg-[#f6822d] hover:bg-orange-600"
+                    onClick={handleSaveScores}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Saving...' : 'Save Assessment Results'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+        </>
       )}
     </>
   );

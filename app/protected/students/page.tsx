@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { StudentsTable } from "@/components/students/students-table";
+import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
 
 export default async function StudentsPage() {
   const supabase = await createClient();
@@ -41,21 +42,22 @@ export default async function StudentsPage() {
     .in('class_id', classIds.length > 0 ? classIds : ['no-classes']);
 
   // Get unique student IDs
-  const studentIds = [...new Set(enrollments?.map(e => e.student_id) || [])];
+  const studentIds = enrollments ? Array.from(new Set(enrollments.map(e => e.student_id))) : [];
 
   // Fetch student details
   const { data: studentsData, error: studentsError } = await supabase
     .from('students')
     .select(`
       id,
-      student_id,
       first_name,
       last_name,
       gender,
+      date_of_birth,
       school_id,
       schools(name)
     `)
-    .in('id', studentIds.length > 0 ? studentIds : ['no-students']);
+    .in('id', studentIds.length > 0 ? studentIds : ['no-students'])
+    .eq('is_archived', false);
 
   // Fetch the class info for each student
   const { data: classEnrollments } = await supabase
@@ -66,22 +68,80 @@ export default async function StudentsPage() {
     `)
     .in('student_id', studentIds.length > 0 ? studentIds : ['no-students']);
 
-  // Fetch latest assessment data
-  const { data: progressData } = await supabase
-    .from('student_progress')
+  // Fetch latest academic age assessments for each student
+  // 1. Maths
+  const { data: mathsAssessments } = await supabase
+    .from('student_academic_ages')
     .select(`
       student_id,
-      status,
-      last_assessment_date
+      academic_age,
+      age_difference,
+      is_deficit,
+      created_at
     `)
+    .eq('test_type', 'maths')
     .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
-    .order('last_assessment_date', { ascending: false });
+    .order('created_at', { ascending: false });
 
-  // Create a map of student ID to their latest assessment
-  const progressMap = new Map();
-  progressData?.forEach(progress => {
-    if (!progressMap.has(progress.student_id)) {
-      progressMap.set(progress.student_id, progress);
+  // 2. Spelling
+  const { data: spellingAssessments } = await supabase
+    .from('student_academic_ages')
+    .select(`
+      student_id,
+      academic_age,
+      age_difference,
+      is_deficit,
+      created_at
+    `)
+    .eq('test_type', 'spelling')
+    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
+    .order('created_at', { ascending: false });
+
+  // 3. Reading
+  const { data: readingAssessments } = await supabase
+    .from('student_academic_ages')
+    .select(`
+      student_id,
+      academic_age,
+      age_difference,
+      is_deficit,
+      created_at
+    `)
+    .eq('test_type', 'reading')
+    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
+    .order('created_at', { ascending: false });
+
+  // Create maps for the latest assessment of each type by student ID
+  const mathsMap = new Map();
+  mathsAssessments?.forEach(assessment => {
+    if (!mathsMap.has(assessment.student_id)) {
+      mathsMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
+    }
+  });
+
+  const spellingMap = new Map();
+  spellingAssessments?.forEach(assessment => {
+    if (!spellingMap.has(assessment.student_id)) {
+      spellingMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
+    }
+  });
+
+  const readingMap = new Map();
+  readingAssessments?.forEach(assessment => {
+    if (!readingMap.has(assessment.student_id)) {
+      readingMap.set(assessment.student_id, {
+        academicAge: assessment.academic_age,
+        difference: formatAgeDifferenceInMonths(assessment.age_difference),
+        isDeficit: assessment.is_deficit
+      });
     }
   });
 
@@ -93,17 +153,61 @@ export default async function StudentsPage() {
     }
   });
 
+  // Get current date for chronological age calculation
+  const currentDate = new Date().toISOString().split('T')[0];
+
+  // Define the student interface that matches the StudentsTable component
+  interface Student {
+    id: string;
+    name: string;
+    class: string;
+    gender: string;
+    chronologicalAge: string;
+    mathsAge: {
+      academicAge: string | null;
+      difference: string | null;
+      isDeficit: boolean;
+    };
+    spellingAge: {
+      academicAge: string | null;
+      difference: string | null;
+      isDeficit: boolean;
+    };
+    readingAge: {
+      academicAge: string | null;
+      difference: string | null;
+      isDeficit: boolean;
+    };
+  }
+
   // Transform data for the students table
-  const students = studentsData?.map(student => {
-    const progress = progressMap.get(student.id);
+  const students: Student[] = studentsData?.map(student => {
+    // Calculate chronological age
+    const chronologicalAge = student.date_of_birth 
+      ? formatChronologicalAge(calculateChronologicalAge(student.date_of_birth, currentDate, 'months'))
+      : 'N/A';
+
     return {
-      id: student.student_id,
+      id: student.id,
       name: `${student.first_name} ${student.last_name}`,
       class: classMap.get(student.id) || 'Not Assigned',
-      school: student.schools?.name || 'Unknown',
       gender: student.gender,
-      lastAssessment: progress?.last_assessment_date || 'Not Assessed',
-      progress: progress?.status || 'Not Assessed'
+      chronologicalAge,
+      mathsAge: mathsMap.get(student.id) || {
+        academicAge: null,
+        difference: null,
+        isDeficit: false
+      },
+      spellingAge: spellingMap.get(student.id) || {
+        academicAge: null,
+        difference: null,
+        isDeficit: false
+      },
+      readingAge: readingMap.get(student.id) || {
+        academicAge: null,
+        difference: null,
+        isDeficit: false
+      }
     };
   }) || [];
 
@@ -136,7 +240,7 @@ export default async function StudentsPage() {
         <div className="md:col-span-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search students by name or ID..." className="pl-10" />
+            <Input placeholder="Search students by name..." className="pl-10" />
           </div>
         </div>
         <div>
