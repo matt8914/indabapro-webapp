@@ -6,7 +6,72 @@ import { ArrowLeft, UserPlus, BarChart2, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentsTable } from "@/components/students/students-table";
 import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
-import type { Database } from "../../../../../database.types"; // Import Database type
+
+// Define database types directly in this file instead of importing
+type Database = {
+  public: {
+    Tables: {
+      classes: {
+        Row: {
+          id: string;
+          class_name: string;
+          grade_level: string;
+          academic_year: string;
+          school_id: string;
+          teacher_id: string;
+          users?: {
+            first_name: string;
+            last_name: string;
+          } | null;
+        };
+      };
+      students: {
+        Row: {
+          id: string;
+          first_name: string;
+          last_name: string;
+          gender: string;
+          notes?: string | null;
+          date_of_birth?: string | null;
+        };
+      };
+      class_enrollments: {
+        Row: {
+          student_id: string;
+          class_id: string;
+          students?: {
+            id: string;
+            first_name: string;
+            last_name: string;
+            gender: string;
+            notes?: string | null;
+            date_of_birth?: string | null;
+          } | null;
+        };
+      };
+      student_academic_ages: {
+        Row: {
+          student_id: string;
+          academic_age: string;
+          age_difference: number;
+          is_deficit: boolean;
+          created_at: string;
+          test_type: string;
+        };
+      };
+      users: {
+        Row: {
+          id: string;
+          first_name: string;
+          last_name: string;
+          email: string;
+          role: string;
+          school_id?: string;
+        };
+      };
+    };
+  };
+};
 
 // Helper type to extract Row types from the Database interface
 type Tables<T extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][T]["Row"];
