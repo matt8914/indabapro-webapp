@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { SmtpMessage } from "../smtp-message";
 import { createClient } from "@/utils/supabase/client";
 
-export default function Signup() {
+// Create a client component that uses useSearchParams
+function SignupForm() {
   const searchParams = useSearchParams();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -144,121 +145,149 @@ export default function Signup() {
   };
 
   return (
-    <>
-      <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit}>
-        <h1 className="text-2xl font-semibold text-gray-900">Sign up</h1>
-        <p className="text-sm text-gray-600 mt-1 mb-6">
-          Already have an account?{" "}
-          <Link className="text-[#f6822d] hover:text-orange-600 font-medium" href="/sign-in">
-            Sign in
-          </Link>
-        </p>
-        <div className="flex flex-col gap-4 mt-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName" className="text-gray-700">First Name</Label>
-              <Input 
-                id="firstName"
-                name="firstName" 
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="John" 
-                required 
-                className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="lastName" className="text-gray-700">Last Name</Label>
-              <Input 
-                id="lastName"
-                name="lastName" 
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Doe" 
-                required 
-                className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-              />
-            </div>
-          </div>
-          
+    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit}>
+      <h1 className="text-2xl font-semibold text-gray-900">Sign up</h1>
+      <p className="text-sm text-gray-600 mt-1 mb-6">
+        Already have an account?{" "}
+        <Link className="text-[#f6822d] hover:text-orange-600 font-medium" href="/sign-in">
+          Sign in
+        </Link>
+      </p>
+      <div className="flex flex-col gap-4 mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-gray-700">Email</Label>
+            <Label htmlFor="firstName" className="text-gray-700">First Name</Label>
             <Input 
-              id="email"
-              name="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" 
-              type="email"
+              id="firstName"
+              name="firstName" 
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="John" 
               required 
               className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-700">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
-              minLength={6}
-              required
+            <Label htmlFor="lastName" className="text-gray-700">Last Name</Label>
+            <Input 
+              id="lastName"
+              name="lastName" 
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Doe" 
+              required 
               className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label className="text-gray-700">Role</Label>
-            <RadioGroup 
-              value={role} 
-              onValueChange={setRole}
-              className="flex space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="teacher" id="teacher" />
-                <Label htmlFor="teacher" className="cursor-pointer">Teacher</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="admin" id="admin" />
-                <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="school" className="text-gray-700">School</Label>
-            <Combobox
-              options={schools}
-              value={schoolId}
-              onChange={setSchoolId}
-              placeholder={loading ? "Searching schools..." : "Type to search for your school..."}
-              disabled={loading}
-              emptyMessage={searchTerm.length < 2 
-                ? "Type at least 2 characters to search" 
-                : searchError || "No schools found with that name. Try a different search term."}
-              onSearch={handleSearchInput}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Type at least 2 characters to search for your school
-            </p>
-          </div>
-          
-          <div className="mt-2">
-            <SubmitButton 
-              pendingText="Signing up..."
-              className="w-full bg-[#f6822d] hover:bg-orange-600 text-white"
-            >
-              Sign up
-            </SubmitButton>
-            {message && <FormMessage message={message} />}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-gray-700">Email</Label>
+          <Input 
+            id="email"
+            name="email" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com" 
+            type="email"
+            required 
+            className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-gray-700">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            minLength={6}
+            required
+            className="rounded-md border-gray-300 focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label className="text-gray-700">Role</Label>
+          <RadioGroup 
+            value={role} 
+            onValueChange={setRole}
+            className="flex space-x-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="teacher" id="teacher" />
+              <Label htmlFor="teacher" className="cursor-pointer">Teacher</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="admin" id="admin" />
+              <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
+            </div>
+          </RadioGroup>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="school" className="text-gray-700">School</Label>
+          <Combobox
+            options={schools}
+            value={schoolId}
+            onChange={setSchoolId}
+            placeholder={loading ? "Searching schools..." : "Type to search for your school..."}
+            disabled={loading}
+            emptyMessage={searchTerm.length < 2 
+              ? "Type at least 2 characters to search" 
+              : searchError || "No schools found with that name. Try a different search term."}
+            onSearch={handleSearchInput}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Type at least 2 characters to search for your school
+          </p>
+        </div>
+        
+        <div className="mt-2">
+          <SubmitButton className="w-full bg-[#f6822d] hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-[#f6822d] focus:ring-opacity-50 transition">
+            Sign Up
+          </SubmitButton>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// Loading fallback for the Suspense boundary
+function SignupLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="p-4 max-w-md w-full">
+        <div className="animate-pulse space-y-6">
+          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-4 bg-gray-200 rounded col-span-1"></div>
+              <div className="h-4 bg-gray-200 rounded col-span-1"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
           </div>
         </div>
-      </form>
-      <SmtpMessage />
-    </>
+      </div>
+    </div>
+  );
+}
+
+// Main page component that wraps the SignupForm with Suspense
+export default function Signup() {
+  return (
+    <Suspense fallback={<SignupLoading />}>
+      <SignupForm />
+    </Suspense>
   );
 }
