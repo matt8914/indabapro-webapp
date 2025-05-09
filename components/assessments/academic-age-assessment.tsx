@@ -398,7 +398,7 @@ export function AcademicAgeAssessment({
           </Button>
           <Button
             type="button"
-            className="bg-indigo-600 text-white hover:bg-indigo-700"
+            className="bg-[#f6822d] hover:bg-orange-600"
             onClick={handleSaveScores}
             disabled={submitting}
           >

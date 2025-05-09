@@ -3,15 +3,13 @@
 import { signUpAction } from "@/app/actions";
 import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
-import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { SmtpMessage } from "../smtp-message";
-import { createClient } from "@/utils/supabase/client";
 
 // Create a client component that uses useSearchParams
 function SignupForm() {
@@ -21,95 +19,7 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("teacher");
-  const [schoolId, setSchoolId] = useState("");
-  const [schools, setSchools] = useState<ComboboxOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchError, setSearchError] = useState<string | null>(null);
   
-  // Search schools directly from database with more flexible search
-  const searchSchools = useCallback(async (term: string) => {
-    if (!term || term.length < 2) {
-      setSchools([]);
-      return;
-    }
-    
-    setLoading(true);
-    setSearchError(null);
-    
-    try {
-      console.log("Searching for schools with term:", term);
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("schools")
-        .select("id, name")
-        .ilike("name", `%${term}%`)
-        .order("name")
-        .limit(50);
-      
-      if (error) {
-        console.error("Supabase error:", error);
-        setSearchError("Error searching schools: " + error.message);
-        throw error;
-      }
-      
-      console.log("Search results:", data?.length || 0, "schools found");
-      
-      if (data && data.length > 0) {
-        const options = data.map((school) => ({
-          value: school.id,
-          label: school.name,
-        }));
-        setSchools(options);
-      } else {
-        // If no exact matches, try a more flexible search
-        const { data: fuzzyData, error: fuzzyError } = await supabase
-          .from("schools")
-          .select("id, name")
-          .or(`name.ilike.%${term.split('').join('%')}%`)
-          .order("name")
-          .limit(50);
-          
-        if (fuzzyError) {
-          console.error("Fuzzy search error:", fuzzyError);
-        } else if (fuzzyData && fuzzyData.length > 0) {
-          console.log("Fuzzy search results:", fuzzyData.length, "schools found");
-          const options = fuzzyData.map((school) => ({
-            value: school.id,
-            label: school.name,
-          }));
-          setSchools(options);
-        } else {
-          setSchools([]);
-        }
-      }
-    } catch (error) {
-      console.error("Error searching schools:", error);
-      setSearchError("Failed to search schools. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  
-  // Handle direct search input changes
-  const handleSearchInput = useCallback((value: string) => {
-    setSearchTerm(value);
-    if (value.length === 0) {
-      setSchools([]);
-    }
-  }, []);
-  
-  // Debounced search when user types
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (searchTerm.length >= 2) {
-        searchSchools(searchTerm);
-      }
-    }, 300);
-    
-    return () => clearTimeout(handler);
-  }, [searchTerm, searchSchools]);
-
   // Create a message object from searchParams
   const message: Message | null = (() => {
     const success = searchParams.get("success");
@@ -138,7 +48,6 @@ function SignupForm() {
     formData.append("email", email);
     formData.append("password", password);
     formData.append("role", role);
-    formData.append("schoolId", schoolId);
     
     // Submit the form using the server action
     await signUpAction(formData);
@@ -227,24 +136,6 @@ function SignupForm() {
               <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
             </div>
           </RadioGroup>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="school" className="text-gray-700">School</Label>
-          <Combobox
-            options={schools}
-            value={schoolId}
-            onChange={setSchoolId}
-            placeholder={loading ? "Searching schools..." : "Type to search for your school..."}
-            disabled={loading}
-            emptyMessage={searchTerm.length < 2 
-              ? "Type at least 2 characters to search" 
-              : searchError || "No schools found with that name. Try a different search term."}
-            onSearch={handleSearchInput}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Type at least 2 characters to search for your school
-          </p>
         </div>
         
         <div className="mt-2">

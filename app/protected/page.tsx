@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ActionCard } from "@/components/dashboard/action-card";
 import { BookOpen, Users, BarChart2, PlusCircle } from "lucide-react";
+import { AddStudentButton } from "@/components/students/add-student-button";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -18,12 +19,18 @@ export default async function DashboardPage() {
   // Fetch user data from the database
   const { data: userData, error: userError } = await supabase
     .from('users')
-    .select('first_name, last_name')
+    .select('first_name, last_name, role, school_id')
     .eq('id', user.id)
     .single();
 
   if (userError) {
     console.error('Error fetching user data:', userError);
+    
+    // If the error is that no profile exists, redirect to complete profile setup
+    if (userError.code === 'PGRST116') {
+      // The user exists in auth but not in the users table
+      return redirect('/auth/complete-profile');
+    }
   }
 
   // Fetch count of classes for this user (if teacher)
@@ -137,11 +144,9 @@ export default async function DashboardPage() {
               href="/protected/classes/new"
               icon={<BookOpen className="h-5 w-5" />}
             />
-            <ActionCard
-              label="Register a new student"
-              href="/protected/students/new"
-              icon={<Users className="h-5 w-5" />}
-            />
+            <AddStudentButton variant="card">
+              Register a new student
+            </AddStudentButton>
             <ActionCard
               label="Record new assessment"
               href="/protected/assessments?tab=record"

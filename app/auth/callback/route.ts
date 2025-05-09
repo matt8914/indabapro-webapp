@@ -14,6 +14,24 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
+    
+    // After exchanging code for session, check if the user has a profile
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Check if user record exists in the database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      // If no user record found, redirect to profile completion
+      if (!userData || userError) {
+        console.log("No user profile found, redirecting to complete-profile");
+        return NextResponse.redirect(`${origin}/auth/complete-profile`);
+      }
+    }
   }
 
   // If this is a password reset redirect, send to reset password page

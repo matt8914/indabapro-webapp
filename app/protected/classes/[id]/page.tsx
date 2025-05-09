@@ -107,11 +107,6 @@ export default async function ClassDetailsPage({
   const { id } = await params; // Await params
   const resolvedSearchParams = await searchParams; // Await searchParams
 
-  // Get the active tab from search params or default to "students"
-  const activeTab = resolvedSearchParams?.tab === "assessments" || resolvedSearchParams?.tab === "reports"
-    ? resolvedSearchParams.tab as string
-    : "students";
-
   // Fetch the class data from the database
   const { data: classData, error: classError } = await supabase
     .from('classes')
@@ -298,9 +293,6 @@ export default async function ClassDetailsPage({
           </p>
         </div>
         <div className="flex gap-3">
-          <Button asChild variant="outline">
-            <Link href="#">Manage Assessments</Link>
-          </Button>
           <Button asChild className="bg-[#f6822d] hover:bg-orange-600 flex items-center gap-1">
             <Link href={`/protected/students/new?class=${id}&return_to=/protected/classes/${id}`}>
               <UserPlus className="h-4 w-4" />
@@ -310,82 +302,40 @@ export default async function ClassDetailsPage({
         </div>
       </div>
       
-      <Tabs defaultValue={activeTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md bg-gray-100 rounded-lg p-1">
-          <TabsTrigger 
-            value="students" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md"
-          >
-            Students
-          </TabsTrigger>
-          <TabsTrigger 
-            value="assessments" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md"
-          >
-            Assessments
-          </TabsTrigger>
-          <TabsTrigger 
-            value="reports" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md"
-          >
-            Reports
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Students Tab Content */}
-        <TabsContent value="students" className="mt-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Student List</h2>
-            <div className="flex gap-3">
-              <Button asChild variant="outline" className="flex items-center gap-1">
-                <Link href="#">
-                  <Upload className="h-4 w-4" />
-                  Import List
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="flex items-center gap-1">
-                <Link href="#">
-                  <Download className="h-4 w-4" />
-                  Export
-                </Link>
-              </Button>
-            </div>
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Student List</h2>
+          <div className="flex gap-3">
+            <Button asChild variant="outline" className="flex items-center gap-1">
+              <Link href="#">
+                <Upload className="h-4 w-4" />
+                Import List
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex items-center gap-1">
+              <Link href="#">
+                <Download className="h-4 w-4" />
+                Export
+              </Link>
+            </Button>
           </div>
-          
-          {studentsForTable.length > 0 ? (
-            <StudentsTable students={studentsForTable} showClassColumn={false} />
-          ) : (
-            <div className="bg-white shadow-sm rounded-lg p-8 text-center">
-              <p className="text-gray-500 mb-1">No students enrolled in this class yet.</p>
-              <p className="text-gray-500 mb-4">Add students to get started.</p>
-              <Button asChild className="bg-[#f6822d] hover:bg-orange-600">
-                <Link href={`/protected/students/new?class=${id}&return_to=/protected/classes/${id}`}>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Add Student
-                </Link>
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Assessments Tab Content */}
-        <TabsContent value="assessments" className="mt-6">
-          <h2 className="text-xl font-semibold mb-6">Class Assessments</h2>
+        </div>
+        
+        {studentsForTable.length > 0 ? (
+          <StudentsTable students={studentsForTable} showClassColumn={false} />
+        ) : (
           <div className="bg-white shadow-sm rounded-lg p-8 text-center">
-            <p className="text-gray-500 mb-1">No assessments recorded yet.</p>
-            <p className="text-gray-500">Add assessments to track student progress.</p>
+            <p className="text-gray-500 mb-1">No students enrolled in this class yet.</p>
+            <p className="text-gray-500 mb-4">Add students to get started.</p>
+            <Button asChild className="bg-[#f6822d] hover:bg-orange-600">
+              <Link href={`/protected/students/new?class=${id}&return_to=/protected/classes/${id}`}>
+                <UserPlus className="h-4 w-4 mr-1" />
+                Add Student
+              </Link>
+            </Button>
           </div>
-        </TabsContent>
-
-        {/* Reports Tab Content */}
-        <TabsContent value="reports" className="mt-6">
-          <h2 className="text-xl font-semibold mb-6">Class Reports</h2>
-          <div className="bg-white shadow-sm rounded-lg p-8 text-center">
-            <p className="text-gray-500 mb-1">No reports available yet.</p>
-            <p className="text-gray-500">Reports will be available once assessments are recorded.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 } 

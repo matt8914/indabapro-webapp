@@ -4,10 +4,18 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info } from "lucide-react";
+import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { convertTenthsToYearsMonths } from "@/utils/academic-age-utils";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AssessmentSession {
   id: string;
@@ -80,6 +88,9 @@ export function AssessmentViewTab({
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Define academic age assessment types
   const academicAgeTypes = [
@@ -254,198 +265,307 @@ export function AssessmentViewTab({
     });
   };
 
+  // Function to handle assessment session deletion
+  const handleDeleteClick = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent toggling session expansion
+    setSessionToDelete(sessionId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!sessionToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      const supabase = createClient();
+      
+      // First, delete related records directly
+      // Delete student_academic_ages records
+      const { error: ageError } = await supabase
+        .from('student_academic_ages')
+        .delete()
+        .eq('session_id', sessionToDelete);
+      
+      if (ageError) throw ageError;
+      
+      // Delete student_assessment_scores records
+      const { error: scoreError } = await supabase
+        .from('student_assessment_scores')
+        .delete()
+        .eq('session_id', sessionToDelete);
+      
+      if (scoreError) throw scoreError;
+      
+      // Finally delete the assessment session
+      const { error: sessionError } = await supabase
+        .from('assessment_sessions')
+        .delete()
+        .eq('id', sessionToDelete);
+      
+      if (sessionError) throw sessionError;
+      
+      // Close the dialog and reset state
+      setDeleteDialogOpen(false);
+      setSessionToDelete(null);
+      
+      // Remove the deleted session from the list
+      window.location.reload(); // Refresh the page to show updated data
+      
+    } catch (err: any) {
+      console.error("Error deleting assessment:", err);
+      alert(`Error deleting assessment: ${err.message || "An unknown error occurred"}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <Input 
-            placeholder="Search assessments..." 
-            className="pl-10" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <>
+      <div className="space-y-6">
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input 
+              placeholder="Search assessments..." 
+              className="pl-10" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <Select value={selectedClass} onValueChange={setSelectedClass}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {classes.map(cls => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.class_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={selectedType} onValueChange={setSelectedType}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by assessment type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Assessment Types</SelectItem>
+              {allAssessmentTypes.map(type => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
-        <Select value={selectedClass} onValueChange={setSelectedClass}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by class" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Classes</SelectItem>
-            {classes.map(cls => (
-              <SelectItem key={cls.id} value={cls.id}>
-                {cls.class_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        
-        <Select value={selectedType} onValueChange={setSelectedType}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by assessment type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Assessment Types</SelectItem>
-            {allAssessmentTypes.map(type => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Assessment List */}
-      {filteredSessions.length > 0 ? (
-        <div className="space-y-4">
-          {filteredSessions.map((session) => (
-            <div key={session.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div 
-                className="p-4 cursor-pointer hover:bg-gray-50 flex items-center justify-between"
-                onClick={() => toggleSession(session.id, session.assessmentType)}
-              >
-                <div className="flex items-center space-x-4">
-                  {expandedSession === session.id ? 
-                    <ChevronDown className="h-5 w-5 text-gray-400" /> : 
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
-                  }
-                  <div>
-                    <h3 className="font-medium">{session.assessmentType}</h3>
-                    <div className="flex items-center text-sm text-gray-500 mt-1 space-x-4">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {new Date(session.date).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center">
-                        <BookOpen className="h-4 w-4 mr-1" />
-                        {session.className}
+        {/* Assessment List */}
+        {filteredSessions.length > 0 ? (
+          <div className="space-y-4">
+            {filteredSessions.map((session) => (
+              <Card key={session.id} className="overflow-hidden">
+                <div 
+                  onClick={() => toggleSession(session.id, session.assessmentType)}
+                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-4">
+                    {expandedSession === session.id ? 
+                      <ChevronDown className="h-5 w-5 text-gray-500" /> : 
+                      <ChevronRight className="h-5 w-5 text-gray-500" />
+                    }
+                    <div>
+                      <h3 className="font-medium text-lg">{session.assessmentType}</h3>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(session.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="h-4 w-4" />
+                          <span>{session.className}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FileText className="h-4 w-4" />
+                          <span>Tester: {session.tester}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="z-10">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button 
+                          className="focus:outline-none" 
+                          data-dropdown-trigger
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={(e) => handleDeleteClick(session.id, e)}
+                          className="cursor-pointer text-red-600 focus:text-red-600"
+                          disabled={deleteLoading}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete Assessment
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  Tester: {session.tester}
-                </div>
-              </div>
-              
-              {/* Expanded Session Details */}
-              {expandedSession === session.id && (
-                <div className="px-6 py-4 border-t">
-                  {loading ? (
-                    <div className="text-center py-4">Loading session details...</div>
-                  ) : sessionDetails ? (
-                    <div className="space-y-6">
-                      {/* Remarks */}
-                      {session.remarks && (
-                        <div className="bg-gray-50 p-4 rounded-md">
-                          <div className="flex items-center text-gray-700 font-medium mb-2">
-                            <FileText className="h-4 w-4 mr-2" />
-                            Notes & Remarks
+                
+                {/* Expanded Session Details */}
+                {expandedSession === session.id && (
+                  <div className="px-6 py-4 border-t">
+                    {loading ? (
+                      <div className="text-center py-4">Loading session details...</div>
+                    ) : sessionDetails ? (
+                      <div className="space-y-6">
+                        {/* Remarks */}
+                        {session.remarks && (
+                          <div className="bg-gray-50 p-4 rounded-md">
+                            <div className="flex items-center text-gray-700 font-medium mb-2">
+                              <FileText className="h-4 w-4 mr-2" />
+                              Notes & Remarks
+                            </div>
+                            <p className="text-gray-600 text-sm">{session.remarks}</p>
                           </div>
-                          <p className="text-gray-600 text-sm">{session.remarks}</p>
-                        </div>
-                      )}
-                      
-                      {/* Academic Age Assessment Results */}
-                      {sessionDetails.isAcademicAgeAssessment ? (
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr className="bg-gray-50 border-b">
-                                <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Student</th>
-                                <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Raw Score</th>
-                                <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age</th>
-                                <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age (Y&M)</th>
-                                <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age</th>
-                                <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Object.entries(sessionDetails.students).map(([studentId, student]) => (
-                                <tr key={studentId} className="border-b">
-                                  <td className="py-3 px-4 text-sm">{student.name}</td>
-                                  <td className="py-3 px-4 text-center text-sm">{student.academicAges?.rawScore}</td>
-                                  <td className="py-3 px-4 text-center text-sm">{student.academicAges?.academicAge}</td>
-                                  <td className="py-3 px-4 text-center text-sm">
-                                    {student.academicAges ? convertTenthsToYearsMonths(student.academicAges.academicAge) : ''}
-                                  </td>
-                                  <td className="py-3 px-4 text-center text-sm">{student.academicAges?.chronologicalAge}</td>
-                                  <td className="py-3 px-4 text-center text-sm">
-                                    {student.academicAges?.ageDifference && (
-                                      <Badge
-                                        className={
-                                          student.academicAges.isDeficit
-                                            ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                            : "bg-green-100 text-green-800 hover:bg-green-100"
-                                        }
-                                      >
-                                        {student.academicAges.ageDifference}
-                                      </Badge>
-                                    )}
-                                  </td>
+                        )}
+                        
+                        {/* Academic Age Assessment Results */}
+                        {sessionDetails.isAcademicAgeAssessment ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="bg-gray-50 border-b">
+                                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Student</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Raw Score</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age (Y&M)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        /* Regular Assessment Results */
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr className="bg-gray-50 border-b">
-                                <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Student</th>
-                                {/* Dynamic Headers for Assessment Components */}
-                                {Object.keys(sessionDetails.students).length > 0 && 
-                                  Object.values(sessionDetails.students)[0].scores && 
-                                  getOrderedComponents(Object.values(sessionDetails.students)[0].scores).map(([componentId, score]) => (
-                                    <th key={componentId} className="py-2 px-4 text-center text-sm font-medium text-gray-500">
-                                      {score.componentName}
-                                    </th>
-                                  ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {Object.entries(sessionDetails.students).map(([studentId, student]) => (
-                                <tr key={studentId} className="border-b">
-                                  <td className="py-3 px-4 text-sm">{student.name}</td>
-                                  {/* Scores for Each Component */}
-                                  {getOrderedComponents(student.scores).map(([componentId, score]) => (
-                                    <td key={componentId} className="py-3 px-4 text-center">
-                                      <div className="flex flex-col items-center">
-                                        <span className="text-sm font-medium">
-                                          {score.rawScore}
-                                        </span>
-                                        {score.standardizedScore && (
-                                          <span className="text-xs text-gray-500 mt-1">
-                                            Std: {score.standardizedScore}
-                                          </span>
-                                        )}
-                                      </div>
+                              </thead>
+                              <tbody>
+                                {Object.entries(sessionDetails.students).map(([studentId, student]) => (
+                                  <tr key={studentId} className="border-b">
+                                    <td className="py-3 px-4 text-sm">{student.name}</td>
+                                    <td className="py-3 px-4 text-center text-sm">{student.academicAges?.rawScore}</td>
+                                    <td className="py-3 px-4 text-center text-sm">{student.academicAges?.academicAge}</td>
+                                    <td className="py-3 px-4 text-center text-sm">
+                                      {student.academicAges ? convertTenthsToYearsMonths(student.academicAges.academicAge) : ''}
                                     </td>
-                                  ))}
+                                    <td className="py-3 px-4 text-center text-sm">{student.academicAges?.chronologicalAge}</td>
+                                    <td className="py-3 px-4 text-center text-sm">
+                                      {student.academicAges?.ageDifference && (
+                                        <Badge
+                                          className={
+                                            student.academicAges.isDeficit
+                                              ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                              : "bg-green-100 text-green-800 hover:bg-green-100"
+                                          }
+                                        >
+                                          {student.academicAges.ageDifference}
+                                        </Badge>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          /* Regular Assessment Results */
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="bg-gray-50 border-b">
+                                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Student</th>
+                                  {/* Dynamic Headers for Assessment Components */}
+                                  {Object.keys(sessionDetails.students).length > 0 && 
+                                    Object.values(sessionDetails.students)[0].scores && 
+                                    getOrderedComponents(Object.values(sessionDetails.students)[0].scores).map(([componentId, score]) => (
+                                      <th key={componentId} className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                                        {score.componentName}
+                                      </th>
+                                    ))}
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 text-gray-500">No data available for this session.</div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <Card className="bg-white p-6 text-center text-gray-500">
-          No assessment sessions found matching your filters.
-        </Card>
-      )}
-    </div>
+                              </thead>
+                              <tbody>
+                                {Object.entries(sessionDetails.students).map(([studentId, student]) => (
+                                  <tr key={studentId} className="border-b">
+                                    <td className="py-3 px-4 text-sm">{student.name}</td>
+                                    {/* Scores for Each Component */}
+                                    {getOrderedComponents(student.scores).map(([componentId, score]) => (
+                                      <td key={componentId} className="py-3 px-4 text-center">
+                                        <div className="flex flex-col items-center">
+                                          <span className="text-sm font-medium">
+                                            {score.rawScore}
+                                          </span>
+                                          {score.standardizedScore && (
+                                            <span className="text-xs text-gray-500 mt-1">
+                                              Std: {score.standardizedScore}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">No data available for this session.</div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="bg-white p-6 text-center text-gray-500">
+            No assessment sessions found matching your filters.
+          </Card>
+        )}
+      </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Assessment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this assessment? This will remove all student scores and academic age data 
+              associated with this assessment. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? "Deleting..." : "Delete Assessment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 } 

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Users } from "lucide-react";
 import { StudentsTable } from "@/components/students/students-table";
+import { AddStudentButton } from "@/components/students/add-student-button";
 import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
 
 export default async function StudentsPage() {
@@ -36,80 +37,104 @@ export default async function StudentsPage() {
   const classIds = classes?.map(c => c.id) || [];
 
   // Get students enrolled in these classes
-  const { data: enrollments } = await supabase
-    .from('class_enrollments')
-    .select('student_id')
-    .in('class_id', classIds.length > 0 ? classIds : ['no-classes']);
+  const { data: enrollments } = classIds.length > 0 
+    ? await supabase
+        .from('class_enrollments')
+        .select('student_id')
+        .in('class_id', classIds)
+    : { data: null };
 
   // Get unique student IDs
   const studentIds = enrollments ? Array.from(new Set(enrollments.map(e => e.student_id))) : [];
 
-  // Fetch student details
-  const { data: studentsData, error: studentsError } = await supabase
-    .from('students')
-    .select(`
-      id,
-      first_name,
-      last_name,
-      gender,
-      date_of_birth,
-      school_id,
-      schools(name)
-    `)
-    .in('id', studentIds.length > 0 ? studentIds : ['no-students'])
-    .eq('is_archived', false);
+  // Initialize variables that will be set conditionally
+  let studentsData = null;
+  let studentsError = null;
+  let classEnrollments = null;
+  let mathsAssessments = null;
+  let spellingAssessments = null;
+  let readingAssessments = null;
 
-  // Fetch the class info for each student
-  const { data: classEnrollments } = await supabase
-    .from('class_enrollments')
-    .select(`
-      student_id,
-      classes(class_name)
-    `)
-    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students']);
+  // Only fetch student data if we have student IDs
+  if (studentIds.length > 0) {
+    // Fetch student details
+    const studentsResult = await supabase
+      .from('students')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        gender,
+        date_of_birth,
+        school_id,
+        schools(name)
+      `)
+      .in('id', studentIds)
+      .eq('is_archived', false);
+    
+    studentsData = studentsResult.data;
+    studentsError = studentsResult.error;
 
-  // Fetch latest academic age assessments for each student
-  // 1. Maths
-  const { data: mathsAssessments } = await supabase
-    .from('student_academic_ages')
-    .select(`
-      student_id,
-      academic_age,
-      age_difference,
-      is_deficit,
-      created_at
-    `)
-    .eq('test_type', 'maths')
-    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
-    .order('created_at', { ascending: false });
+    // Fetch the class info for each student
+    const classEnrollmentsResult = await supabase
+      .from('class_enrollments')
+      .select(`
+        student_id,
+        classes(class_name)
+      `)
+      .in('student_id', studentIds);
+    
+    classEnrollments = classEnrollmentsResult.data;
 
-  // 2. Spelling
-  const { data: spellingAssessments } = await supabase
-    .from('student_academic_ages')
-    .select(`
-      student_id,
-      academic_age,
-      age_difference,
-      is_deficit,
-      created_at
-    `)
-    .eq('test_type', 'spelling')
-    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
-    .order('created_at', { ascending: false });
+    // Fetch latest academic age assessments for each student
+    // 1. Maths
+    const mathsResult = await supabase
+      .from('student_academic_ages')
+      .select(`
+        student_id,
+        academic_age,
+        age_difference,
+        is_deficit,
+        created_at
+      `)
+      .eq('test_type', 'maths')
+      .in('student_id', studentIds)
+      .order('created_at', { ascending: false });
+    
+    mathsAssessments = mathsResult.data;
 
-  // 3. Reading
-  const { data: readingAssessments } = await supabase
-    .from('student_academic_ages')
-    .select(`
-      student_id,
-      academic_age,
-      age_difference,
-      is_deficit,
-      created_at
-    `)
-    .eq('test_type', 'reading')
-    .in('student_id', studentIds.length > 0 ? studentIds : ['no-students'])
-    .order('created_at', { ascending: false });
+    // 2. Spelling
+    const spellingResult = await supabase
+      .from('student_academic_ages')
+      .select(`
+        student_id,
+        academic_age,
+        age_difference,
+        is_deficit,
+        created_at
+      `)
+      .eq('test_type', 'spelling')
+      .in('student_id', studentIds)
+      .order('created_at', { ascending: false });
+    
+    spellingAssessments = spellingResult.data;
+
+    // 3. Reading
+    const readingResult = await supabase
+      .from('student_academic_ages')
+      .select(`
+        student_id,
+        academic_age,
+        age_difference,
+        is_deficit,
+        created_at
+      `)
+      .eq('test_type', 'reading')
+      .in('student_id', studentIds)
+      .order('created_at', { ascending: false });
+    
+    readingAssessments = readingResult.data;
+  }
 
   // Create maps for the latest assessment of each type by student ID
   const mathsMap = new Map();
@@ -228,30 +253,27 @@ export default async function StudentsPage() {
             View and manage all students in your classes.
           </p>
         </div>
-        <Button asChild className="bg-[#f6822d] hover:bg-orange-600">
-          <Link href="/protected/students/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Student
-          </Link>
-        </Button>
+        <AddStudentButton />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="md:col-span-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search students by name..." className="pl-10" />
+      {studentIds.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input placeholder="Search students by name..." className="pl-10" />
+            </div>
+          </div>
+          <div>
+            <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <option value="">All Classes</option>
+              {uniqueClasses.map(classItem => (
+                <option key={classItem} value={classItem}>{classItem}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <div>
-          <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-            <option value="">All Classes</option>
-            {uniqueClasses.map(classItem => (
-              <option key={classItem} value={classItem}>{classItem}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      )}
 
       {studentsError && (
         <div className="bg-red-50 p-4 rounded-md text-red-700">
@@ -259,9 +281,20 @@ export default async function StudentsPage() {
         </div>
       )}
 
-      {students.length === 0 ? (
-        <div className="bg-white p-6 rounded-lg shadow-sm text-center">
-          <p className="text-gray-500">No students found. Add students to your class to get started.</p>
+      {!studentIds.length ? (
+        <div className="bg-white p-8 rounded-lg shadow-sm text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="bg-orange-100 p-3 rounded-full">
+              <Users className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+          <h3 className="text-lg font-medium mb-2">No Students Added Yet</h3>
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            You need to create a class and add students to get started. Add your first student to begin tracking academic progress.
+          </p>
+          <AddStudentButton variant="link">
+            Add Your First Student
+          </AddStudentButton>
         </div>
       ) : (
         <StudentsTable students={students} />

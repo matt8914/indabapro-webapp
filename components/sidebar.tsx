@@ -73,7 +73,16 @@ export function Sidebar({ currentPath }: SidebarProps) {
           .eq('id', user.id)
           .single();
           
-        if (userError) throw new DataAccessError(`Error fetching user data: ${userError.message}`, 500);
+        if (userError) {
+          // Check if it's a "no rows returned" error (which happens after signup before profile is created)
+          if (userError.code === 'PGRST116') {
+            // Redirect to sign-out and then sign-in to refresh the session
+            await supabase.auth.signOut();
+            window.location.href = "/sign-in?error=Please+sign+in+again+to+complete+your+profile+setup";
+            return;
+          }
+          throw new DataAccessError(`Error fetching user data: ${userError.message}`, 500);
+        }
         if (!userData) throw new DataAccessError("User profile not found", 404);
         
         let schoolName;

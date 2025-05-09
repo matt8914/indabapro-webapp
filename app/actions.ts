@@ -12,7 +12,6 @@ export const signUpAction = async (formData: FormData) => {
   const firstName = formData.get("firstName")?.toString();
   const lastName = formData.get("lastName")?.toString();
   const role = formData.get("role")?.toString();
-  const schoolId = formData.get("schoolId")?.toString();
   
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
@@ -34,8 +33,7 @@ export const signUpAction = async (formData: FormData) => {
       data: {
         first_name: firstName,
         last_name: lastName,
-        role: role,
-        school_id: schoolId || null
+        role: role
       }
     },
   });
@@ -45,29 +43,8 @@ export const signUpAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-up", authError.message);
   }
   
-  // If the user was created successfully, create a user record in the database
-  if (authData.user) {
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        role: role,
-        school_id: schoolId || null
-      });
-      
-    if (profileError) {
-      console.error("Error creating user profile:", profileError);
-      return encodedRedirect(
-        "error", 
-        "/sign-up", 
-        "Account created but profile setup failed. Please contact support."
-      );
-    }
-  }
-
+  // The user profile will be created after email verification when they visit /auth/complete-profile
+  
   return encodedRedirect(
     "success",
     "/sign-up",

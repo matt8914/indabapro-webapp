@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { createClassAction } from "@/app/actions";
 
-export default async function NewClassPage({ searchParams }: { searchParams: Promise<{ message?: string; type?: string }> }) {
+export default async function NewClassPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const supabase = await createClient();
   const resolvedSearchParams = await searchParams;
 
@@ -19,6 +19,16 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
     return redirect("/sign-in");
   }
 
+  // Get error and message from search params
+  const error = resolvedSearchParams?.error?.toString();
+  const message = resolvedSearchParams?.message?.toString(); 
+  const success = resolvedSearchParams?.success?.toString();
+
+  // Determine if there's any message to show
+  const showMessage = error || message || success;
+  const messageType = error ? 'error' : (success ? 'success' : 'info');
+  const messageContent = error || success || message || '';
+
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
       <div className="flex items-center gap-2 mb-4">
@@ -29,11 +39,16 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
       </div>
       
       <div className="bg-white shadow-sm rounded-lg p-6 max-w-2xl">
-        {resolvedSearchParams?.message && (
-          <div className={`mb-4 p-3 rounded-md ${
-            resolvedSearchParams?.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+        {showMessage && (
+          <div className={`mb-6 p-4 rounded-md flex items-start gap-3 ${
+            messageType === 'error' 
+              ? 'bg-red-50 text-red-700 border border-red-100' 
+              : messageType === 'success' 
+                ? 'bg-green-50 text-green-700 border border-green-100' 
+                : 'bg-blue-50 text-blue-700 border border-blue-100'
           }`}>
-            {resolvedSearchParams.message}
+            {messageType === 'error' && <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
+            <div>{messageContent}</div>
           </div>
         )}
         

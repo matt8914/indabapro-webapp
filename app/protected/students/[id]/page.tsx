@@ -40,6 +40,7 @@ interface StudentData {
   speech_language_therapy?: string;
   medication?: string;
   counselling?: string;
+  location?: string;
   schools?: {
     name: string;
     Location: string;
@@ -575,10 +576,11 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Place</div>
-                  <div className="font-medium">{studentData && studentData.schools && 
+                  <div className="font-medium">{studentData?.location || 
+                    (studentData && studentData.schools && 
                     (typeof studentData.schools === 'object' && studentData.schools !== null && 'Location' in studentData.schools) ?
                     (studentData.schools as any).Location : 
-                    studentInfo.place}</div>
+                    studentInfo.place)}</div>
                 </div>
               </div>
               
