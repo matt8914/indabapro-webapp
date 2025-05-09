@@ -576,7 +576,9 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Place</div>
-                  <div className="font-medium">{studentData?.location || 
+                  <div className="font-medium">{
+                    // Access location safely with proper type checking
+                    (studentData && 'location' in studentData && studentData.location) || 
                     (studentData && studentData.schools && 
                     (typeof studentData.schools === 'object' && studentData.schools !== null && 'Location' in studentData.schools) ?
                     (studentData.schools as any).Location : 
