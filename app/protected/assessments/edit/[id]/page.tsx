@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { EditAssessmentForm } from "@/components/assessments/edit-assessment-form";
 
-export default async function EditAssessmentPage({ params }: { params: { id: string } }) {
-  const assessmentId = params.id;
+export default async function EditAssessmentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: assessmentId } = await params;
   const supabase = await createClient();
 
   // Check user authentication
