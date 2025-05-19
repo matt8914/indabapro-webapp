@@ -33,6 +33,7 @@ export function Sidebar({ currentPath }: SidebarProps) {
     last_name: string;
     school_name?: string;
     initials: string;
+    role?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export function Sidebar({ currentPath }: SidebarProps) {
         // Get the user profile from the users table
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('first_name, last_name, school_id')
+          .select('first_name, last_name, school_id, role')
           .eq('id', user.id)
           .single();
           
@@ -107,7 +108,8 @@ export function Sidebar({ currentPath }: SidebarProps) {
             first_name: userData.first_name,
             last_name: userData.last_name,
             school_name: schoolName,
-            initials: initials.toUpperCase()
+            initials: initials.toUpperCase(),
+            role: userData.role
           });
           setError(null);
         }
@@ -186,7 +188,7 @@ export function Sidebar({ currentPath }: SidebarProps) {
           
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('first_name, last_name, school_id')
+            .select('first_name, last_name, school_id, role')
             .eq('id', user.id)
             .single();
             
@@ -211,7 +213,8 @@ export function Sidebar({ currentPath }: SidebarProps) {
             first_name: userData.first_name,
             last_name: userData.last_name,
             school_name: schoolName,
-            initials: initials.toUpperCase()
+            initials: initials.toUpperCase(),
+            role: userData.role
           });
           setError(null);
         } catch (error) {
@@ -224,6 +227,24 @@ export function Sidebar({ currentPath }: SidebarProps) {
       
       fetchProfile();
     }, 500);
+  };
+
+  // Function to determine what to display in the school/role section
+  const getDisplayedSchoolOrRole = () => {
+    if (!userProfile) return "";
+    
+    // If user has a school, display it
+    if (userProfile.school_name) {
+      return userProfile.school_name;
+    }
+    
+    // If user is a therapist without a school, display "Private Therapist"
+    if (userProfile.role === 'therapist') {
+      return "Private Therapist";
+    }
+    
+    // Default fallback
+    return "No School";
   };
 
   const navigation: SidebarItem[] = [
@@ -315,7 +336,7 @@ export function Sidebar({ currentPath }: SidebarProps) {
                       {userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : "User"}
                     </p>
                     <p className="text-xs font-medium text-gray-500">
-                      {userProfile?.school_name || "No School"}
+                      {getDisplayedSchoolOrRole()}
                     </p>
                   </>
                 )}
