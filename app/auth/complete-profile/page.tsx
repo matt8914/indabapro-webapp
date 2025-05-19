@@ -111,6 +111,14 @@ export default function CompleteProfile() {
     }
   };
 
+  // Effect to handle role change
+  useEffect(() => {
+    // If role is therapist, explicitly set schoolId to null
+    if (role === "therapist") {
+      setSchoolId("");
+    }
+  }, [role]);
+
   // Submit the form to create user profile
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -126,6 +134,7 @@ export default function CompleteProfile() {
       }
       
       // Create user profile in the database
+      const now = new Date().toISOString();
       const { error: profileError } = await supabase
         .from('users')
         .insert({
@@ -134,11 +143,14 @@ export default function CompleteProfile() {
           last_name: lastName,
           email: email,
           role: role,
-          school_id: schoolId || null
+          school_id: role === "therapist" ? null : (schoolId || null),
+          created_at: now,
+          updated_at: now
         });
         
       if (profileError) {
-        throw profileError;
+        console.error("Database error details:", JSON.stringify(profileError));
+        throw new Error(`Database error: ${profileError.message || profileError.details || 'Unknown error'}`);
       }
       
       // Update user metadata
@@ -147,7 +159,7 @@ export default function CompleteProfile() {
           first_name: firstName,
           last_name: lastName,
           role: role,
-          school_id: schoolId || null
+          school_id: role === "therapist" ? null : (schoolId || null)
         }
       });
       
@@ -155,7 +167,7 @@ export default function CompleteProfile() {
       router.push("/protected");
     } catch (error) {
       console.error("Error completing profile:", error);
-      setError("Failed to complete profile setup. Please try again.");
+      setError(`Failed to complete profile setup: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -260,26 +272,32 @@ export default function CompleteProfile() {
                   <RadioGroupItem value="admin" id="admin" />
                   <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="therapist" id="therapist" />
+                  <Label htmlFor="therapist" className="cursor-pointer">Private Therapist</Label>
+                </div>
               </RadioGroup>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="school">School</Label>
-              <Combobox
-                options={schools}
-                value={schoolId}
-                onChange={setSchoolId}
-                placeholder={loading ? "Searching schools..." : "Type to search for your school..."}
-                disabled={loading}
-                emptyMessage={searchTerm.length < 2 
-                  ? "Type at least 2 characters to search" 
-                  : searchError || "No schools found with that name. Try a different search term."}
-                onSearch={handleSearchInput}
-              />
-              <p className="text-xs text-gray-500">
-                Type at least 2 characters to search for your school
-              </p>
-            </div>
+            {role !== "therapist" && (
+              <div className="space-y-2">
+                <Label htmlFor="school">School</Label>
+                <Combobox
+                  options={schools}
+                  value={schoolId}
+                  onChange={setSchoolId}
+                  placeholder={loading ? "Searching schools..." : "Type to search for your school..."}
+                  disabled={loading}
+                  emptyMessage={searchTerm.length < 2 
+                    ? "Type at least 2 characters to search" 
+                    : searchError || "No schools found with that name. Try a different search term."}
+                  onSearch={handleSearchInput}
+                />
+                <p className="text-xs text-gray-500">
+                  Type at least 2 characters to search for your school
+                </p>
+              </div>
+            )}
           </div>
           
           <Button 

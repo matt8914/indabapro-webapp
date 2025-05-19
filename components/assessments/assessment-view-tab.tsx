@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical } from "lucide-react";
+import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical, Edit } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { convertTenthsToYearsMonths } from "@/utils/academic-age-utils";
@@ -409,6 +409,15 @@ export function AssessmentViewTab({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/protected/assessments/edit/${session.id}`;
+                          }}
+                          className="cursor-pointer text-blue-600 focus:text-blue-600"
+                        >
+                          <Edit className="mr-2 h-4 w-4" /> Edit Assessment
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
                           onClick={(e) => handleDeleteClick(session.id, e)}
                           className="cursor-pointer text-red-600 focus:text-red-600"
                           disabled={deleteLoading}
@@ -428,15 +437,17 @@ export function AssessmentViewTab({
                     ) : sessionDetails ? (
                       <div className="space-y-6">
                         {/* Remarks */}
-                        {session.remarks && (
-                          <div className="bg-gray-50 p-4 rounded-md">
-                            <div className="flex items-center text-gray-700 font-medium mb-2">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Notes & Remarks
-                            </div>
-                            <p className="text-gray-600 text-sm">{session.remarks}</p>
+                        <div className="bg-gray-50 p-4 rounded-md">
+                          <div className="flex items-center text-gray-700 font-medium mb-2">
+                            <FileText className="h-4 w-4 mr-2" />
+                            Notes & Remarks
                           </div>
-                        )}
+                          {session.remarks ? (
+                            <p className="text-gray-600 text-sm">{session.remarks}</p>
+                          ) : (
+                            <p className="text-gray-400 text-sm italic">No assessment notes available</p>
+                          )}
+                        </div>
                         
                         {/* Academic Age Assessment Results */}
                         {sessionDetails.isAcademicAgeAssessment ? (
@@ -509,7 +520,11 @@ export function AssessmentViewTab({
                                             {score.rawScore}
                                           </span>
                                           {score.standardizedScore && (
-                                            <span className="text-xs text-gray-500 mt-1">
+                                            <span className={`text-xs mt-1 ${
+                                              score.standardizedScore === 1 ? "bg-red-200 text-red-800 px-1.5 py-0.5 rounded font-medium" : 
+                                              score.standardizedScore === 2 ? "bg-red-100 text-red-700 px-1.5 py-0.5 rounded" :
+                                              "text-gray-500"
+                                            }`}>
                                               Std: {score.standardizedScore}
                                             </span>
                                           )}

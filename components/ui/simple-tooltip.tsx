@@ -1,37 +1,34 @@
 "use client"
 
-import React, { useState } from 'react';
-import { cn } from "@/utils/cn";
+import React from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-interface TooltipProps {
+interface SimpleTooltipProps {
   children: React.ReactNode;
-  text: string;
-  className?: string;
+  content: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
 }
 
-export function SimpleTooltip({ children, text, className }: TooltipProps) {
-  const [isVisible, setIsVisible] = useState(false);
-
+export function SimpleTooltip({
+  children,
+  content,
+  side = "top",
+  align = "center",
+}: SimpleTooltipProps) {
   return (
-    <div 
-      className="relative inline-block" 
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-      onFocus={() => setIsVisible(true)}
-      onBlur={() => setIsVisible(false)}
-    >
-      {children}
-      {isVisible && (
-        <div 
-          className={cn(
-            "absolute z-50 p-2 text-sm bg-black text-white rounded shadow-md max-w-xs",
-            "top-full mt-1 left-1/2 transform -translate-x-1/2",
-            className
-          )}
-        >
-          {text}
-        </div>
-      )}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side} align={align}>
+          <p className="max-w-xs text-xs">{content}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 } 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Users } from "lucide-react";
 import { StudentsTable } from "@/components/students/students-table";
+import { FilteredStudentsTable } from "@/components/students/filtered-students-table";
 import { AddStudentButton } from "@/components/students/add-student-button";
 import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
 
@@ -236,6 +237,9 @@ export default async function StudentsPage() {
     };
   }) || [];
 
+  // Sort students alphabetically by name
+  students.sort((a, b) => a.name.localeCompare(b.name));
+
   // Get unique classes for filter dropdown
   const uniqueClasses: string[] = [];
   students.forEach(student => {
@@ -255,25 +259,6 @@ export default async function StudentsPage() {
         </div>
         <AddStudentButton />
       </div>
-
-      {studentIds.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <Input placeholder="Search students by name..." className="pl-10" />
-            </div>
-          </div>
-          <div>
-            <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-              <option value="">All Classes</option>
-              {uniqueClasses.map(classItem => (
-                <option key={classItem} value={classItem}>{classItem}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
 
       {studentsError && (
         <div className="bg-red-50 p-4 rounded-md text-red-700">
@@ -297,7 +282,7 @@ export default async function StudentsPage() {
           </AddStudentButton>
         </div>
       ) : (
-        <StudentsTable students={students} />
+        <FilteredStudentsTable students={students} uniqueClasses={uniqueClasses} />
       )}
     </div>
   );

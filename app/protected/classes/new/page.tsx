@@ -18,6 +18,15 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
   if (!user) {
     return redirect("/sign-in");
   }
+  
+  // Get user role to determine form display
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+    
+  const isTherapist = userData?.role === 'therapist';
 
   // Get error and message from search params
   const error = resolvedSearchParams?.error?.toString();
@@ -53,6 +62,9 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
         )}
         
         <form action={createClassAction} className="space-y-6">
+          {/* Hidden field to indicate user role */}
+          <input type="hidden" name="userRole" value={userData?.role || 'teacher'} />
+          
           <div className="space-y-2">
             <Label htmlFor="className">Class Name</Label>
             <Input 
@@ -89,14 +101,18 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="teacherName">Class Teacher</Label>
-            <Input 
-              id="teacherName" 
-              placeholder="Enter teacher's name" 
-              className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-            />
-          </div>
+          {/* Only show Teacher field for non-therapists */}
+          {!isTherapist && (
+            <div className="space-y-2">
+              <Label htmlFor="teacherName">Class Teacher</Label>
+              <Input 
+                id="teacherName" 
+                name="teacherName"
+                placeholder="Enter teacher's name" 
+                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+              />
+            </div>
+          )}
           
           <div className="pt-4 flex justify-end gap-3">
             <Button variant="outline" asChild>

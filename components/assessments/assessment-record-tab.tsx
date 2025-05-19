@@ -271,6 +271,34 @@ export function AssessmentRecordTab({
     }));
   };
 
+  // Handle keyboard navigation between input fields
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, studentId: string, componentId: string, studentIndex: number, componentIndex: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      const components = getOrderedComponents(getCurrentComponents());
+      const nextComponentIndex = componentIndex + 1;
+      
+      // If there's a next component in the same row
+      if (nextComponentIndex < components.length) {
+        const nextComponentId = components[nextComponentIndex].id;
+        const nextInput = document.querySelector(`input[data-student-id="${studentId}"][data-component-id="${nextComponentId}"]`) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      } 
+      // Otherwise, move to the first component of the next student
+      else if (studentIndex + 1 < classStudents.length) {
+        const nextStudentId = classStudents[studentIndex + 1].id;
+        const firstComponentId = components[0].id;
+        const nextInput = document.querySelector(`input[data-student-id="${nextStudentId}"][data-component-id="${firstComponentId}"]`) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+    }
+  };
+
   // Filter classes based on search query
   const filteredClasses = classes.filter(cls => 
     cls.class_name.toLowerCase().includes(classSearchQuery.toLowerCase())
@@ -714,10 +742,10 @@ export function AssessmentRecordTab({
                     </thead>
                     <tbody>
                       {classStudents.length > 0 ? (
-                        classStudents.map((student) => (
+                        classStudents.map((student, studentIndex) => (
                           <tr key={student.id} className="border-b">
                             <td className="py-4 px-2">{student.name}</td>
-                            {getOrderedComponents(getCurrentComponents()).map((component) => (
+                            {getOrderedComponents(getCurrentComponents()).map((component, componentIndex) => (
                               <td key={`${student.id}-${component.id}`} className="py-2 px-2">
                                 <Input
                                   type="number"
@@ -726,6 +754,9 @@ export function AssessmentRecordTab({
                                   max={component.max_score}
                                   value={scores[student.id]?.[component.id] || ""}
                                   onChange={(e) => handleScoreChange(student.id, component.id, e.target.value)}
+                                  onKeyDown={(e) => handleKeyDown(e, student.id, component.id, studentIndex, componentIndex)}
+                                  data-student-id={student.id}
+                                  data-component-id={component.id}
                                 />
                               </td>
                             ))}

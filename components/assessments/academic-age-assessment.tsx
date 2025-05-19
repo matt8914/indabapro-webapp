@@ -139,6 +139,22 @@ export function AcademicAgeAssessment({
     }));
   };
 
+  // Handle keyboard navigation between input fields
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, studentId: string, studentIndex: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // If there's a next student, focus on its input field
+      if (studentIndex < students.length - 1) {
+        const nextStudentId = students[studentIndex + 1].id;
+        const nextInput = document.querySelector(`input[data-student-id="${nextStudentId}"]`) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+    }
+  };
+
   // Handle save scores
   const handleSaveScores = async () => {
     setSubmitting(true);
@@ -340,6 +356,8 @@ export function AcademicAgeAssessment({
                         max={testType === 'maths' ? 56 : testType === 'reading' ? 42 : 80}
                         value={scores[student.id]?.rawScore || ""}
                         onChange={(e) => handleScoreChange(student.id, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, student.id, students.indexOf(student))}
+                        data-student-id={student.id}
                       />
                     </td>
                     <td className="py-2 px-2 text-center">

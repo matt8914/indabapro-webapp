@@ -198,6 +198,7 @@ export const createClassAction = async (formData: FormData) => {
   const className = formData.get("className")?.toString();
   const gradeLevel = formData.get("gradeLevel")?.toString();
   const academicYear = formData.get("year")?.toString();
+  const userRole = formData.get("userRole")?.toString() || "teacher"; // Get user role from form
   
   if (!className || !gradeLevel || !academicYear) {
     return encodedRedirect(
@@ -220,14 +221,15 @@ export const createClassAction = async (formData: FormData) => {
     );
   }
   
-  // Get the user's school ID
+  // Get the user's details
   const { data: userData } = await supabase
     .from('users')
-    .select('school_id')
+    .select('school_id, first_name, last_name, role')
     .eq('id', user.id)
     .single();
   
-  if (!userData?.school_id) {
+  // Only check for school_id if user is not a therapist
+  if (!userData?.school_id && userRole !== 'therapist') {
     return encodedRedirect(
       "error",
       "/protected/classes/new",
@@ -235,18 +237,42 @@ export const createClassAction = async (formData: FormData) => {
     );
   }
   
-  // Create the class in the database
+  // For TypeScript type safety, create the base data object
+  const baseClassData = {
+    class_name: className,
+    grade_level: gradeLevel,
+    academic_year: academicYear,
+    teacher_id: user.id,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  
+  // Handle different cases for therapist vs. teacher/admin users
+  let classInsertData;
+  
+  if (userRole === 'therapist') {
+    // For therapists, set therapist_id and school_id=null
+    classInsertData = {
+      ...baseClassData,
+      school_id: null,
+      therapist_id: user.id,  // Set therapist_id to the user's ID
+      is_therapist_class: true,
+      therapist_name: userData ? `${userData.first_name} ${userData.last_name}` : ''
+    };
+  } else {
+    // For teachers and admins, use the school_id
+    classInsertData = {
+      ...baseClassData,
+      school_id: userData?.school_id,
+      therapist_id: null,  // Explicitly set to null for non-therapists
+      is_therapist_class: false
+    };
+  }
+  
+  // Create the class in the database with type assertion to handle new columns
   const { error } = await supabase
     .from('classes')
-    .insert({
-      class_name: className,
-      grade_level: gradeLevel,
-      academic_year: academicYear,
-      school_id: userData.school_id,
-      teacher_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
+    .insert(classInsertData as any);
   
   if (error) {
     console.error('Error creating class:', error);
@@ -272,6 +298,9 @@ export const createStudentAction = async (formData: FormData) => {
   const dateOfBirth = formData.get("dateOfBirth")?.toString();
   const homeLanguage = formData.get("homeLanguage")?.toString() || "english";
   const notes = formData.get("specialNeeds")?.toString();
+  
+  // School ID for therapist-created students
+  const schoolId = formData.get("schoolId")?.toString();
   
   // Get the return path if provided
   const returnTo = formData.get("returnTo")?.toString();
@@ -303,14 +332,19 @@ export const createStudentAction = async (formData: FormData) => {
     );
   }
   
-  // Get the user's school ID
+  // Get the user's details including role
   const { data: userData } = await supabase
     .from('users')
-    .select('school_id')
+    .select('school_id, role')
     .eq('id', user.id)
     .single();
   
-  if (!userData?.school_id) {
+  const isTherapist = userData?.role === 'therapist';
+  
+  // For teachers/admins, require a school_id; for therapists check if they provided one
+  const userSchoolId = userData?.school_id;
+  
+  if (!isTherapist && !userSchoolId) {
     return encodedRedirect(
       "error",
       `/protected/students/new${classId ? `?class=${classId}` : ''}${returnTo ? `&return_to=${encodeURIComponent(returnTo)}` : ''}`,
@@ -318,9 +352,20 @@ export const createStudentAction = async (formData: FormData) => {
     );
   }
   
+  if (isTherapist && !schoolId) {
+    return encodedRedirect(
+      "error",
+      `/protected/students/new${classId ? `?class=${classId}` : ''}${returnTo ? `&return_to=${encodeURIComponent(returnTo)}` : ''}`,
+      "As a therapist, you must specify which school this student attends."
+    );
+  }
+  
   try {
     // Generate a student ID if not provided
     const studentId = studentIdInput || `S${new Date().getFullYear()}${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    // Set the school ID based on user role
+    const studentSchoolId = isTherapist ? schoolId : userSchoolId;
     
     // Create an object with basic and optional student data
     // Use type assertion to assure TypeScript that we know what we're doing
@@ -329,7 +374,7 @@ export const createStudentAction = async (formData: FormData) => {
       first_name: firstName,
       last_name: lastName,
       gender: gender,
-      school_id: userData.school_id,
+      school_id: studentSchoolId,
       home_language: homeLanguage,
       // Only include optional fields if they have values
       ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),

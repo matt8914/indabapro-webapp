@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { KeyRound, User } from "lucide-react";
 import { resetPasswordAction, updateProfileAction } from "@/app/actions";
 
@@ -159,22 +158,6 @@ export default async function SettingsPage({
                   Send Password Reset Email
                 </Button>
               </form>
-
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-medium mb-4">Two-Factor Authentication</h3>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="2fa" />
-                  <label
-                    htmlFor="2fa"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Enable two-factor authentication
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Enhance your account security by requiring a verification code in addition to your password
-                </p>
-              </div>
             </CardContent>
           </Card>
 

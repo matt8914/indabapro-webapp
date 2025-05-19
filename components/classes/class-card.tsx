@@ -17,6 +17,7 @@ interface ClassCardProps {
   studentCount: number;
   id: string;
   teacher?: string;
+  isTherapistClass?: boolean;
   onDeleteRequest: (classInfo: {id: string, studentCount: number, className: string}) => void;
 }
 
@@ -27,6 +28,7 @@ export function ClassCard({
   studentCount,
   id,
   teacher = "Ms. Johnson",
+  isTherapistClass = false,
   onDeleteRequest,
 }: ClassCardProps) {
   const router = useRouter();
@@ -67,7 +69,7 @@ export function ClassCard({
             Grade {gradeLevel} • {year}
           </p>
           <p className="text-sm text-gray-500 mt-1">
-            Teacher: {teacher}
+            {isTherapistClass ? "Therapist:" : "Teacher:"} {teacher}
           </p>
         </div>
         

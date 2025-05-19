@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus, BarChart2, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentsTable } from "@/components/students/students-table";
+import { SearchedStudentsTable } from "@/components/students/searched-students-table";
 import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
 
 // Define database types directly in this file instead of importing
@@ -19,6 +20,8 @@ type Database = {
           academic_year: string;
           school_id: string;
           teacher_id: string;
+          is_therapist_class?: boolean;
+          therapist_name?: string;
           users?: {
             first_name: string;
             last_name: string;
@@ -117,7 +120,9 @@ export default async function ClassDetailsPage({
       academic_year,
       school_id,
       teacher_id,
-      users(first_name, last_name)
+      is_therapist_class,
+      therapist_name,
+      users!classes_teacher_id_fkey(first_name, last_name)
     `)
     .eq('id', id)
     .single();
@@ -133,6 +138,16 @@ export default async function ClassDetailsPage({
       </div>
     );
   }
+
+  // TypeScript is sometimes struggling with the Supabase query results
+  // This helps us safely work with the data
+  type ClassDataType = typeof classData & {
+    is_therapist_class?: boolean;
+    therapist_name?: string;
+  };
+
+  // Use type assertion
+  const typedClassData = classData as ClassDataType;
 
   // Get the count of students in this class
   const { count: studentCount } = await supabase
@@ -273,10 +288,21 @@ export default async function ClassDetailsPage({
     };
   }).filter(student => student !== null) as StudentForTable[] || [];
 
-  // Format teacher name
-  const teacherName = classData.users 
-    ? `${classData.users.first_name} ${classData.users.last_name}`
-    : 'Not Assigned';
+  // Sort students alphabetically by name
+  studentsForTable.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Format teacher name and determine class type  
+  // First check if it's a therapist class and use therapist_name
+  const isTherapistClass = 'is_therapist_class' in classData && classData.is_therapist_class === true;
+  let displayName = 'Not Assigned';
+  
+  if (isTherapistClass && classData.therapist_name) {
+    // For therapist classes, use the therapist_name field directly
+    displayName = classData.therapist_name;
+  } else if (classData["users!classes_teacher_id_fkey"]) {
+    // For teacher classes, use the teacher relationship
+    displayName = `${classData["users!classes_teacher_id_fkey"].first_name} ${classData["users!classes_teacher_id_fkey"].last_name}`;
+  }
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
@@ -289,7 +315,7 @@ export default async function ClassDetailsPage({
             <h1 className="text-2xl font-semibold tracking-tight">{classData.class_name}</h1>
           </div>
           <p className="text-gray-500 mt-1 ml-7">
-            Grade {classData.grade_level} • {classData.academic_year} • Teacher: {teacherName}
+            Grade {classData.grade_level} • {classData.academic_year} • {isTherapistClass ? "Therapist:" : "Teacher:"} {displayName}
           </p>
         </div>
         <div className="flex gap-3">
@@ -322,7 +348,7 @@ export default async function ClassDetailsPage({
         </div>
         
         {studentsForTable.length > 0 ? (
-          <StudentsTable students={studentsForTable} showClassColumn={false} />
+          <SearchedStudentsTable students={studentsForTable} showClassColumn={false} />
         ) : (
           <div className="bg-white shadow-sm rounded-lg p-8 text-center">
             <p className="text-gray-500 mb-1">No students enrolled in this class yet.</p>

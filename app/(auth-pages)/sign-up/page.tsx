@@ -135,6 +135,10 @@ function SignupForm() {
               <RadioGroupItem value="admin" id="admin" />
               <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="therapist" id="therapist" />
+              <Label htmlFor="therapist" className="cursor-pointer">Private Therapist</Label>
+            </div>
           </RadioGroup>
         </div>
         

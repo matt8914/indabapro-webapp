@@ -1,5 +1,8 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+"use client"
+
+import { useState, useEffect, use } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,76 +15,344 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 
-export default async function EditStudentPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const { id } = await params;
-  const resolvedSearch = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/sign-in");
-  }
-
-  // Get the class ID from search params if available
-  const classId = typeof resolvedSearch.classId === 'string' ? resolvedSearch.classId : "";
-  
-  // Determine the back link based on whether we came from a class page
-  const backLink = classId 
-    ? `/protected/students/${id}?classId=${classId}`
-    : `/protected/students/${id}`;
-
-  // Dictionary of mock student data, keyed by ID
-  const studentData: Record<string, any> = {
-    "S20250001": {
-      id: "S20250001",
-      firstName: "Emily",
-      lastName: "Johnson",
-      class: "1", // Grade 3A
-      school: "Springfield Elementary",
-      place: "Cape Town",
-      gender: "female",
-      homeLanguage: "english",
-      dateOfBirth: "2018-05-15",
-      specialNeeds: {
-        occupationalTherapy: "none",
-        speechTherapy: "recommended",
-        medication: "none",
-        counselling: "none"
-      }
-    },
-    // Add other students with similar data structure if needed
+// Define types
+interface StudentDetails {
+  id: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
+  currentClassId: string; 
+  dateOfBirth: string;
+  place: string;
+  homeLanguage: string;
+  notes: string;
+  specialNeeds: {
+    occupationalTherapy: string;
+    speechTherapy: string;
+    medication: string;
+    counselling: string;
   };
+  healthInfo: {
+    eyesight: string;
+    speech: string;
+    hearing: string;
+  };
+}
 
-  // Create default data for any student ID not in our dictionary
-  const studentInfo = studentData[id] || {
-    id: id,
-    firstName: id === "S20250002" ? "Michael" : 
-              id === "S20250003" ? "Sophia" : 
-              id === "S20250004" ? "Daniel" : 
-              id === "S20250005" ? "Olivia" :
-              "Student",
-    lastName: id === "S20250002" ? "Smith" : 
-              id === "S20250003" ? "Williams" : 
-              id === "S20250004" ? "Brown" : 
-              id === "S20250005" ? "Miller" :
-              id,
-    class: "1", // Grade 3A
-    school: "Springfield Elementary",
-    place: "Cape Town",
-    gender: id.endsWith("2") || id.endsWith("4") || id.endsWith("6") || id.endsWith("8") || id.endsWith("0") ? "male" : "female",
+export default function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
+  // Unwrap the params promise using React.use()
+  const { id } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<string | null>(null);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [studentData, setStudentData] = useState<any>(null);
+  const [isTherapist, setIsTherapist] = useState(false);
+  
+  // School search state
+  const [schoolId, setSchoolId] = useState("");
+  const [schoolName, setSchoolName] = useState("");
+  const [schools, setSchools] = useState<ComboboxOption[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
+  
+  // Form fields
+  const [studentInfo, setStudentInfo] = useState<StudentDetails>({
+    id: "",
+    firstName: "",
+    lastName: "",
+    gender: "",
+    currentClassId: "",
+    dateOfBirth: "",
+    place: "",
     homeLanguage: "english",
-    dateOfBirth: "2018-07-22",
+    notes: "",
     specialNeeds: {
       occupationalTherapy: "none",
       speechTherapy: "none",
       medication: "none",
       counselling: "none"
+    },
+    healthInfo: {
+      eyesight: "none",
+      speech: "none",
+      hearing: "none"
+    }
+  });
+  
+  // Get class ID from search params if available
+  const classId = searchParams.get('classId');
+  
+  // Get back link
+  const backLink = `/protected/students/${id}${classId ? `?classId=${classId}` : ''}`;
+
+  // Initialize page data
+  useEffect(() => {
+    const initPage = async () => {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        
+        // Check authentication
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          router.push("/sign-in");
+          return;
+        }
+        
+        // Get user role and school info
+        const { data: userData } = await supabase
+          .from('users')
+          .select(`
+            school_id,
+            role,
+            schools(
+              id,
+              name
+            )
+          `)
+          .eq('id', user.id)
+          .single();
+        
+        if (userData) {
+          setIsTherapist(userData.role === 'therapist');
+          if (userData.schools && !isTherapist) {
+            setSchoolName(userData.schools.name);
+          }
+        }
+        
+        // Fetch all classes
+        const { data: classesData, error: classesError } = await supabase
+          .from('classes')
+          .select('id, class_name, academic_year')
+          .order('created_at', { ascending: false });
+
+        if (classesError) {
+          console.error("Error fetching classes:", classesError);
+        } else if (classesData) {
+          setClasses(classesData);
+        }
+        
+        // Fetch the actual student data
+        const { data: studentResult, error: studentError } = await supabase
+          .from('students')
+          .select(`
+            id,
+            student_id,
+            first_name,
+            last_name,
+            gender,
+            date_of_birth,
+            home_language,
+            school_id,
+            location,
+            occupational_therapy,
+            speech_language_therapy,
+            medication,
+            counselling,
+            notes,
+            schools (
+              id,
+              name,
+              Location
+            ),
+            class_enrollments (
+              class_id,
+              classes (
+                id,
+                class_name,
+                grade_level,
+                academic_year
+              )
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (studentError) {
+          console.error("Error fetching student data:", studentError);
+          router.push("/protected/students");
+          return;
+        }
+        
+        if (studentResult) {
+          setStudentData(studentResult);
+          
+          // Set initial school state
+          if (studentResult.schools) {
+            setSchoolId(studentResult.school_id || "");
+            setSchoolName(studentResult.schools.name || "");
+          }
+          
+          // Set form fields
+          setStudentInfo({
+            id: studentResult.student_id || "",
+            firstName: studentResult.first_name || "",
+            lastName: studentResult.last_name || "",
+            gender: studentResult.gender || "",
+            currentClassId: studentResult.class_enrollments?.length > 0 ? 
+                        studentResult.class_enrollments[0].class_id : "",
+            dateOfBirth: studentResult.date_of_birth || "",
+            place: studentResult.location || studentResult.schools?.Location || "",
+            homeLanguage: studentResult.home_language || "english",
+            notes: studentResult.notes || "",
+            specialNeeds: {
+              occupationalTherapy: studentResult.occupational_therapy || "none",
+              speechTherapy: studentResult.speech_language_therapy || "none",
+              medication: studentResult.medication || "none",
+              counselling: studentResult.counselling || "none"
+            },
+            healthInfo: {
+              eyesight: studentResult.healthInfo?.eyesight || "none",
+              speech: studentResult.healthInfo?.speech || "none",
+              hearing: studentResult.healthInfo?.hearing || "none"
+            }
+          });
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error("Error initializing page:", error);
+        setLoading(false);
+      }
+    };
+    
+    initPage();
+  }, [id, router, isTherapist]);
+  
+  // Search schools function for therapists
+  const searchSchools = async (term: string) => {
+    if (!term || term.length < 2) {
+      setSchools([]);
+      return;
+    }
+    
+    setSearchError(null);
+    
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("schools")
+        .select("id, name")
+        .ilike("name", `%${term}%`)
+        .order("name")
+        .limit(50);
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        const options = data.map((school) => ({
+          value: school.id,
+          label: school.name,
+        }));
+        setSchools(options);
+      } else {
+        setSchools([]);
+      }
+    } catch (error) {
+      console.error("Error searching schools:", error);
+      setSearchError("Failed to search schools. Please try again.");
     }
   };
+  
+  // Handle search input changes
+  const handleSearchInput = (value: string) => {
+    setSearchTerm(value);
+    if (value.length === 0) {
+      setSchools([]);
+    }
+  };
+  
+  // Debounced search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchTerm.length >= 2) {
+        searchSchools(searchTerm);
+      }
+    }, 300);
+    
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+  
+  // Form submission handler
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    
+    try {
+      const formData = new FormData();
+      
+      // Add all student info to form data
+      formData.append('studentId', id);
+      formData.append('firstName', studentInfo.firstName);
+      formData.append('lastName', studentInfo.lastName);
+      formData.append('gender', studentInfo.gender);
+      formData.append('classId', studentInfo.currentClassId);
+      formData.append('student_id', studentInfo.id);
+      
+      // For therapists, use the selected school ID from combobox
+      if (isTherapist && schoolId) {
+        formData.append('schoolId', schoolId);
+      } else if (studentData?.school_id) {
+        // For teachers, use the current school ID
+        formData.append('schoolId', studentData.school_id);
+      }
+      
+      formData.append('place', studentInfo.place);
+      formData.append('dateOfBirth', studentInfo.dateOfBirth);
+      formData.append('homeLanguage', studentInfo.homeLanguage);
+      formData.append('occupationalTherapy', studentInfo.specialNeeds.occupationalTherapy);
+      formData.append('speechTherapy', studentInfo.specialNeeds.speechTherapy);
+      formData.append('medication', studentInfo.specialNeeds.medication);
+      formData.append('counselling', studentInfo.specialNeeds.counselling);
+      formData.append('eyesight', studentInfo.healthInfo.eyesight);
+      formData.append('speech', studentInfo.healthInfo.speech);
+      formData.append('hearing', studentInfo.healthInfo.hearing);
+      
+      // Submit the form
+      const response = await fetch("/api/actions/updateStudent", {
+        method: "POST",
+        body: formData,
+        credentials: 'include', // Include credentials (cookies)
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update student");
+      }
+      
+      setMessage("Student information updated successfully");
+      setMessageType("success");
+      
+      // Redirect back to student view after short delay
+      setTimeout(() => {
+        router.push(backLink);
+      }, 1500);
+      
+    } catch (error) {
+      console.error("Error updating student:", error);
+      setMessage(error instanceof Error ? error.message : "An unexpected error occurred");
+      setMessageType("error");
+      setLoading(false);
+    }
+  };
+
+  if (loading && !studentData) {
+    return (
+      <div className="flex-1 w-full flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
@@ -96,14 +367,22 @@ export default async function EditStudentPage({ params, searchParams }: { params
       </div>
       
       <div className="bg-white shadow-sm rounded-lg p-6 max-w-2xl">
-        <form className="space-y-6">
+        {message && (
+          <div className={`mb-4 p-3 rounded-md ${
+            messageType === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+          }`}>
+            {message}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="studentId">Student ID</Label>
             <Input 
               id="studentId" 
-              defaultValue={studentInfo.id}
-              readOnly
-              className="bg-gray-50"
+              value={studentInfo.id}
+              onChange={(e) => setStudentInfo({...studentInfo, id: e.target.value})}
+              className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
             />
           </div>
           
@@ -112,8 +391,10 @@ export default async function EditStudentPage({ params, searchParams }: { params
               <Label htmlFor="firstName">First Name</Label>
               <Input 
                 id="firstName" 
+                name="firstName"
                 placeholder="First Name" 
-                defaultValue={studentInfo.firstName}
+                value={studentInfo.firstName}
+                onChange={(e) => setStudentInfo({...studentInfo, firstName: e.target.value})}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
@@ -122,8 +403,10 @@ export default async function EditStudentPage({ params, searchParams }: { params
               <Label htmlFor="lastName">Last Name</Label>
               <Input 
                 id="lastName" 
+                name="lastName"
                 placeholder="Last Name" 
-                defaultValue={studentInfo.lastName}
+                value={studentInfo.lastName}
+                onChange={(e) => setStudentInfo({...studentInfo, lastName: e.target.value})}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
@@ -132,7 +415,11 @@ export default async function EditStudentPage({ params, searchParams }: { params
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="gender">Gender</Label>
-              <Select defaultValue={studentInfo.gender}>
+              <Select 
+                name="gender"
+                value={studentInfo.gender}
+                onValueChange={(value) => setStudentInfo({...studentInfo, gender: value})}
+              >
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Gender" />
                 </SelectTrigger>
@@ -145,14 +432,20 @@ export default async function EditStudentPage({ params, searchParams }: { params
             
             <div className="space-y-2">
               <Label htmlFor="class">Class</Label>
-              <Select defaultValue={studentInfo.class}>
+              <Select 
+                name="classId"
+                value={studentInfo.currentClassId}
+                onValueChange={(value) => setStudentInfo({...studentInfo, currentClassId: value})}
+              >
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Grade 3A</SelectItem>
-                  <SelectItem value="2">Grade 4B</SelectItem>
-                  <SelectItem value="3">Grade 3C</SelectItem>
+                  {classes.map((classItem) => (
+                    <SelectItem key={classItem.id} value={classItem.id}>
+                      {classItem.class_name} ({classItem.academic_year})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -161,20 +454,49 @@ export default async function EditStudentPage({ params, searchParams }: { params
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>
-              <Input 
-                id="school" 
-                placeholder="School Name" 
-                defaultValue={studentInfo.school}
-                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-              />
+              {isTherapist ? (
+                // For therapists: Show combobox to search for a school
+                <Combobox
+                  options={schools}
+                  value={schoolId}
+                  onChange={(value) => {
+                    setSchoolId(value);
+                    const selectedSchool = schools.find(s => s.value === value);
+                    if (selectedSchool) {
+                      setSchoolName(selectedSchool.label);
+                    }
+                  }}
+                  placeholder={loading ? "Searching schools..." : "Type to search for a school..."}
+                  disabled={loading}
+                  emptyMessage={searchTerm.length < 2 
+                    ? "Type at least 2 characters to search" 
+                    : searchError || "No schools found with that name. Try a different search term."}
+                  onSearch={handleSearchInput}
+                />
+              ) : (
+                // For teachers: Show readonly school name
+                <Input 
+                  id="school" 
+                  value={schoolName}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              )}
+              {isTherapist && (
+                <p className="text-xs text-gray-500">
+                  Type at least 2 characters to search for a school
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="place">Place</Label>
               <Input 
                 id="place" 
+                name="place"
                 placeholder="City/Town" 
-                defaultValue={studentInfo.place}
+                value={studentInfo.place}
+                onChange={(e) => setStudentInfo({...studentInfo, place: e.target.value})}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
@@ -185,15 +507,21 @@ export default async function EditStudentPage({ params, searchParams }: { params
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
               <Input 
                 id="dateOfBirth" 
+                name="dateOfBirth"
                 type="date"
-                defaultValue={studentInfo.dateOfBirth}
+                value={studentInfo.dateOfBirth}
+                onChange={(e) => setStudentInfo({...studentInfo, dateOfBirth: e.target.value})}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="homeLanguage">Home Language</Label>
-              <Select defaultValue={studentInfo.homeLanguage}>
+              <Select 
+                name="homeLanguage"
+                value={studentInfo.homeLanguage}
+                onValueChange={(value) => setStudentInfo({...studentInfo, homeLanguage: value})}
+              >
                 <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                   <SelectValue placeholder="Select Language" />
                 </SelectTrigger>
@@ -213,56 +541,153 @@ export default async function EditStudentPage({ params, searchParams }: { params
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="occupationalTherapy">Occupational Therapy</Label>
-                <Select defaultValue={studentInfo.specialNeeds.occupationalTherapy}>
+                <Select 
+                  name="occupationalTherapy"
+                  value={studentInfo.specialNeeds.occupationalTherapy}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    specialNeeds: {...studentInfo.specialNeeds, occupationalTherapy: value}
+                  })}
+                >
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="receiving">Receiving Support</SelectItem>
+                    <SelectItem value="attending">Attending</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="speechTherapy">Speech and Language Therapy</Label>
-                <Select defaultValue={studentInfo.specialNeeds.speechTherapy}>
+                <Select 
+                  name="speechTherapy"
+                  value={studentInfo.specialNeeds.speechTherapy}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    specialNeeds: {...studentInfo.specialNeeds, speechTherapy: value}
+                  })}
+                >
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="receiving">Receiving Support</SelectItem>
+                    <SelectItem value="attending">Attending</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="medication">Medication</Label>
-                <Select defaultValue={studentInfo.specialNeeds.medication}>
+                <Select 
+                  name="medication"
+                  value={studentInfo.specialNeeds.medication}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    specialNeeds: {...studentInfo.specialNeeds, medication: value}
+                  })}
+                >
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="receiving">Receiving Support</SelectItem>
+                    <SelectItem value="attending">Attending</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="counselling">Counselling</Label>
-                <Select defaultValue={studentInfo.specialNeeds.counselling}>
+                <Select 
+                  name="counselling"
+                  value={studentInfo.specialNeeds.counselling}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    specialNeeds: {...studentInfo.specialNeeds, counselling: value}
+                  })}
+                >
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="receiving">Receiving Support</SelectItem>
+                    <SelectItem value="attending">Attending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <Label>Health Information</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="eyesight">Eyesight</Label>
+                <Select 
+                  name="eyesight"
+                  value={studentInfo.healthInfo.eyesight}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    healthInfo: {...studentInfo.healthInfo, eyesight: value}
+                  })}
+                >
+                  <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
+                    <SelectValue placeholder="Select Eyesight Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="glasses">Glasses</SelectItem>
+                    <SelectItem value="squint">Squint</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="speech">Speech</Label>
+                <Select 
+                  name="speech"
+                  value={studentInfo.healthInfo.speech}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    healthInfo: {...studentInfo.healthInfo, speech: value}
+                  })}
+                >
+                  <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
+                    <SelectValue placeholder="Select Speech Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="stutter">Stutter</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="hearing">Hearing</Label>
+                <Select 
+                  name="hearing"
+                  value={studentInfo.healthInfo.hearing}
+                  onValueChange={(value) => setStudentInfo({
+                    ...studentInfo, 
+                    healthInfo: {...studentInfo.healthInfo, hearing: value}
+                  })}
+                >
+                  <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
+                    <SelectValue placeholder="Select Hearing Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="hard_of_hearing">Hard of Hearing</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -275,8 +700,15 @@ export default async function EditStudentPage({ params, searchParams }: { params
                 Cancel
               </Link>
             </Button>
-            <Button type="submit" className="bg-[#f6822d] hover:bg-orange-600">
-              Save Changes
+            <Button type="submit" className="bg-[#f6822d] hover:bg-orange-600" disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span>
+                  Processing...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </form>

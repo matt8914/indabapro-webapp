@@ -15,6 +15,7 @@ interface ClassDisplayInfo {
   year: string;
   studentCount: number;
   teacher: string;
+  isTherapistClass?: boolean;
 }
 
 // Type for the data passed to/from modal confirmation for delete action
@@ -135,6 +136,7 @@ export function ClassListDisplay({ initialClassesData }: ClassListDisplayProps) 
               year={classItem.year}
               studentCount={classItem.studentCount}
               teacher={classItem.teacher}
+              isTherapistClass={classItem.isTherapistClass}
               onDeleteRequest={handleDeleteRequest}
             />
           ))}

@@ -23,28 +23,15 @@ interface ASBScore {
   standardized_score: number;
 }
 
-// Add type for class average scores (mirroring page.tsx)
-interface ASBClassAverageScore {
-  component_name: string;
-  average_standardized_score: number;
-}
-
 interface ASBProfileChartProps {
   studentName: string;
   scores: ASBScore[];
-  classAverageScores: ASBClassAverageScore[];
 }
 
-export function ASBProfileChart({ studentName, scores, classAverageScores }: ASBProfileChartProps) {
-  console.log("[ASBProfileChart] Received props:", { studentName, scores, classAverageScores });
+export function ASBProfileChart({ studentName, scores }: ASBProfileChartProps) {
+  console.log("[ASBProfileChart] Received props:", { studentName, scores });
 
-  // Create a map for easier lookup of class average scores
-  const averageScoresMap = new Map<string, number>();
-  classAverageScores.forEach(avgScore => {
-    averageScoresMap.set(avgScore.component_name, avgScore.average_standardized_score);
-  });
-
-  // Transform the scores data for the chart, including average scores
+  // Transform the scores data for the chart
   const chartData = scores.map(score => ({
     component: score.component_name,
     componentLabel: score.component_name === "Visual Perception" ? "Visual Perception" :
@@ -57,7 +44,6 @@ export function ASBProfileChart({ studentName, scores, classAverageScores }: ASB
                    score.component_name === "Verbal Comprehension" ? "Verbal Comprehension" :
                    score.component_name,
     score: score.standardized_score,
-    averageScore: averageScoresMap.get(score.component_name) || 0,
     rawScore: score.raw_score
   }));
 
@@ -67,11 +53,7 @@ export function ASBProfileChart({ studentName, scores, classAverageScores }: ASB
     score: {
       label: "Learner's Score",
       color: "hsl(210, 100%, 45%)", // Blue
-    },
-    averageScore: {
-      label: "Average Score",
-      color: "hsl(35, 100%, 60%)", // Orange
-    },
+    }
   };
 
   return (
@@ -106,6 +88,18 @@ export function ASBProfileChart({ studentName, scores, classAverageScores }: ASB
                 axisLine={false} 
                 tickMargin={8}
               />
+              <ReferenceLine 
+                y={3} 
+                stroke="hsl(35, 100%, 60%)" 
+                strokeWidth={2} 
+                strokeDasharray="3 3" 
+                label={{ 
+                  value: 'Expected Level (3)', 
+                  position: 'right',
+                  fill: 'hsl(35, 100%, 60%)',
+                  fontSize: 12
+                }} 
+              />
               <ChartTooltip
                 cursor={false}
                 content={<ChartTooltipContent />}
@@ -123,20 +117,6 @@ export function ASBProfileChart({ studentName, scores, classAverageScores }: ASB
                   r: 7,
                 }}
               />
-              <Line
-                dataKey="averageScore"
-                type="monotone" 
-                stroke="var(--color-averageScore)"
-                strokeWidth={2}
-                strokeDasharray="3 3"
-                dot={{
-                  fill: "var(--color-averageScore)",
-                  r: 5,
-                }}
-                activeDot={{
-                  r: 7,
-                }}
-              />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -147,7 +127,7 @@ export function ASBProfileChart({ studentName, scores, classAverageScores }: ASB
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-orange-400"></div>
-            <span>Average Score</span>
+            <span>Expected Level (3)</span>
           </div>
         </div>
       </CardContent>

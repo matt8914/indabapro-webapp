@@ -35,7 +35,39 @@ export const createClient = async (cookieHeader?: string) => {
       supabaseUrl = supabaseUrl.slice(0, -1);
     }
 
-    if (isAppDirContext()) {
+    // Handle cookie based on context (cookieHeader provided is prioritized)
+    if (cookieHeader) {
+      // When cookieHeader is provided, create client with manual cookie handling
+      return createServerClient<Database>(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          cookies: {
+            get(name) {
+              // Parse the cookie header to get the specific cookie
+              const cookieValue = cookieHeader
+                ?.split(';')
+                .find(cookie => cookie.trim().startsWith(`${name}=`))
+                ?.split('=')[1];
+              
+              return cookieValue || '';
+            },
+            set(name, value, options) {
+              // In this context, we can't set cookies, just log for debugging
+              console.log('Cookie set attempted in API route with manually provided cookieHeader');
+            },
+            remove(name, options) {
+              // In this context, we can't remove cookies, just log for debugging
+              console.log('Cookie remove attempted in API route with manually provided cookieHeader');
+            },
+          },
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+          }
+        }
+      );
+    } else if (isAppDirContext()) {
       // App directory with Server Components - use next/headers
       // Import cookies directly from next/headers for async usage
       const nextCookies = await import('next/headers');

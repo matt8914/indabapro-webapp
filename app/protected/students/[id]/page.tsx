@@ -40,6 +40,9 @@ interface StudentData {
   speech_language_therapy?: string;
   medication?: string;
   counselling?: string;
+  eyesight?: string;
+  speech?: string;
+  hearing?: string;
   location?: string;
   schools?: {
     name: string;
@@ -82,25 +85,26 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
   // Determine the back link based on whether we came from a class page
   const backLink = classId ? `/protected/classes/${classId}` : "/protected/students";
 
-  // Fetch the student information with expanded class and school details
+  // First fetch the basic student data
   const { data: studentData, error: studentError } = await supabase
     .from('students')
     .select(`
-      *,
-      schools (
-        name,
-        Location
-      ),
-      class_enrollments (
-        class_id,
-        classes (
-          class_name,
-          teacher:users (
-            first_name,
-            last_name
-          )
-        )
-      )
+      id, 
+      student_id,
+      first_name, 
+      last_name, 
+      gender, 
+      date_of_birth, 
+      home_language,
+      location,
+      school_id,
+      occupational_therapy,
+      speech_language_therapy,
+      medication,
+      counselling,
+      eyesight,
+      speech,
+      hearing
     `)
     .eq('id', id)
     .single();
@@ -109,10 +113,65 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     console.error("Error fetching student:", studentError.message || JSON.stringify(studentError));
   }
 
+  // If we have student data, fetch related data in separate queries
+  let schoolData = null;
+  let enrollmentData = null;
+  
+  if (studentData) {
+    // Get school data
+    if (studentData.school_id) {
+      const { data: schoolResult } = await supabase
+        .from('schools')
+        .select('name, Location')
+        .eq('id', studentData.school_id)
+        .single();
+      
+      schoolData = schoolResult;
+    }
+    
+    // Get class enrollment and teacher data
+    const { data: enrollments } = await supabase
+      .from('class_enrollments')
+      .select(`
+        class_id,
+        classes (
+          id,
+          class_name,
+          teacher_id
+        )
+      `)
+      .eq('student_id', studentData.id);
+    
+    enrollmentData = enrollments;
+    
+    // If we have enrollments with teacher IDs, fetch the teacher data
+    if (enrollmentData && enrollmentData.length > 0 && 
+        enrollmentData[0].classes && enrollmentData[0].classes.teacher_id) {
+      
+      const teacherId = enrollmentData[0].classes.teacher_id;
+      
+      const { data: teacherData } = await supabase
+        .from('users')
+        .select('first_name, last_name')
+        .eq('id', teacherId)
+        .single();
+        
+      // Attach teacher data to enrollment
+      if (teacherData) {
+        enrollmentData[0].classes.teacher = teacherData;
+      }
+    }
+  }
+  
+  // Combine the data for use in the component
+  const combinedStudentData = studentData ? {
+    ...studentData,
+    schools: schoolData,
+    class_enrollments: enrollmentData
+  } : null;
+
   // Initialize ASB related data
   let asbScores: ASBScore[] = [];
-  // Initialize class average ASB scores
-  let asbClassAverageScores: ASBClassAverageScore[] = [];
   // Initialize assessment date
   let asbTestDate: string | null = null;
 
@@ -124,10 +183,10 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
   // Current date for chronological age
   const currentDate = new Date().toISOString().split('T')[0];
 
-  if (studentData) {
+  if (combinedStudentData) {
     // Calculate chronological age
-    const chronologicalAge = studentData.date_of_birth ? 
-      calculateChronologicalAge(studentData.date_of_birth, currentDate, 'months') : null;
+    const chronologicalAge = combinedStudentData.date_of_birth ? 
+      calculateChronologicalAge(combinedStudentData.date_of_birth, currentDate, 'months') : null;
       
     // Get assessment type ID first
     const { data: asbTypeData, error: asbTypeError } = await supabase
@@ -142,7 +201,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     
     const asbTypeId = asbTypeData?.id;
 
-    if (asbTypeId && studentData.id) {
+    if (asbTypeId && combinedStudentData.id) {
       // Fetch the most recent ASB test results for this student
       const { data: asbSessions, error: asbSessionsError } = await supabase
         .from('assessment_sessions')
@@ -154,7 +213,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
           student_assessment_scores!inner(student_id)
         `)
         .eq('assessment_type_id', asbTypeId)
-        .eq('student_assessment_scores.student_id', studentData.id)
+        .eq('student_assessment_scores.student_id', combinedStudentData.id)
         .order('test_date', { ascending: false });
 
       if (asbSessionsError) {
@@ -164,7 +223,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
         // Store the test date
         asbTestDate = latestSession.test_date;
         
-        if (latestSession && latestSession.id && studentData.id) {
+        if (latestSession && latestSession.id && combinedStudentData.id) {
           const { data: scores, error: scoresError } = await supabase
             .from('student_assessment_scores')
             .select(`
@@ -174,7 +233,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
               assessment_components(id, name)
             `)
             .eq('session_id', latestSession.id)
-            .eq('student_id', studentData.id);
+            .eq('student_id', combinedStudentData.id);
             
           if (scoresError) {
             console.error("Error fetching scores:", scoresError);
@@ -188,55 +247,11 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
         }
       }
 
-      // Fetch class average scores if classId is available
-      const studentClassId = studentData.class_enrollments?.[0]?.class_id;
-      if (studentClassId) {
-        // Get all assessment session IDs for the class and ASB type
-        const { data: classSessionsData, error: classSessionsError } = await supabase
-          .from('assessment_sessions')
-          .select('id')
-          .eq('assessment_type_id', asbTypeId)
-          .eq('class_id', studentClassId);
-
-        if (classSessionsError) {
-          console.error("Error fetching class sessions:", classSessionsError.message);
-        } else if (classSessionsData && classSessionsData.length > 0) {
-          const classSessionIds = classSessionsData.map(session => session.id);
-
-          // Fetch all scores for these sessions
-          const { data: classScoresData, error: classScoresError } = await supabase
-            .from('student_assessment_scores')
-            .select('standardized_score, assessment_components(name)')
-            .in('session_id', classSessionIds);
-
-          if (classScoresError) {
-            console.error("Error fetching class scores:", classScoresError.message);
-          } else if (classScoresData && classScoresData.length > 0) {
-            // Calculate average standardized score for each component
-            const componentScores: { [key: string]: number[] } = {};
-            classScoresData.forEach(score => {
-              if (score.assessment_components && score.standardized_score !== null) {
-                const componentName = score.assessment_components.name;
-                if (!componentScores[componentName]) {
-                  componentScores[componentName] = [];
-                }
-                componentScores[componentName].push(Number(score.standardized_score));
-              }
-            });
-
-            asbClassAverageScores = Object.keys(componentScores).map(componentName => ({
-              component_name: componentName,
-              average_standardized_score: componentScores[componentName].reduce((acc, val) => acc + val, 0) / componentScores[componentName].length,
-            }));
-          }
-        }
-      }
-
       // Fetch the most recent academic assessment results
       const { data: mathsAssessments, error: mathsError } = await supabase
         .from('student_academic_ages')
         .select('academic_age, age_difference, is_deficit, created_at')
-        .eq('student_id', studentData.id)
+        .eq('student_id', combinedStudentData.id)
         .eq('test_type', 'maths')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -255,7 +270,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       const { data: spellingAssessments, error: spellingError } = await supabase
         .from('student_academic_ages')
         .select('academic_age, age_difference, is_deficit, created_at')
-        .eq('student_id', studentData.id)
+        .eq('student_id', combinedStudentData.id)
         .eq('test_type', 'spelling')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -274,7 +289,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       const { data: readingAssessments, error: readingError } = await supabase
         .from('student_academic_ages')
         .select('academic_age, age_difference, is_deficit, created_at')
-        .eq('student_id', studentData.id)
+        .eq('student_id', combinedStudentData.id)
         .eq('test_type', 'reading')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -334,7 +349,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
   };
 
   // Use actual data if available, otherwise use mock data
-  const studentInfo = studentData || mockStudentData[id] || {
+  let studentInfo: any = combinedStudentData || mockStudentData[id] || {
     id: id,
     fullName: id === "S20250002" ? "Michael Smith" : 
               id === "S20250003" ? "Sophia Williams" : 
@@ -354,32 +369,37 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       speechTherapy: "None",
       medication: "None",
       counselling: "None"
+    },
+    healthInfo: {
+      eyesight: "None",
+      speech: "None",
+      hearing: "None"
     }
   };
 
   // Format student name
-  const studentName = studentData ? 
-    `${studentData.first_name} ${studentData.last_name}` : 
+  const studentName = combinedStudentData ? 
+    `${combinedStudentData.first_name} ${combinedStudentData.last_name}` : 
     studentInfo.fullName;
 
   // Get teacher name from actual data if available
   let teacherName = studentInfo.teacher;
-  if (studentData && 
-      studentData.class_enrollments && 
-      studentData.class_enrollments.length > 0 && 
-      studentData.class_enrollments[0].classes && 
-      studentData.class_enrollments[0].classes.teacher) {
-    const teacher = studentData.class_enrollments[0].classes.teacher;
+  if (combinedStudentData && 
+      combinedStudentData.class_enrollments && 
+      combinedStudentData.class_enrollments.length > 0 && 
+      combinedStudentData.class_enrollments[0].classes && 
+      combinedStudentData.class_enrollments[0].classes.teacher) {
+    const teacher = combinedStudentData.class_enrollments[0].classes.teacher;
     teacherName = `${teacher.first_name} ${teacher.last_name}`;
   }
   
   // Get class name from actual data if available
   let className = studentInfo.class;
-  if (studentData && 
-      studentData.class_enrollments && 
-      studentData.class_enrollments.length > 0 && 
-      studentData.class_enrollments[0].classes) {
-    className = studentData.class_enrollments[0].classes.class_name;
+  if (combinedStudentData && 
+      combinedStudentData.class_enrollments && 
+      combinedStudentData.class_enrollments.length > 0 && 
+      combinedStudentData.class_enrollments[0].classes) {
+    className = combinedStudentData.class_enrollments[0].classes.class_name;
   }
     
   // Use mock ASB data if no actual data is available
@@ -396,21 +416,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     ];
   }
 
-  // Use mock class average data if no actual data is available
-  if (asbClassAverageScores.length === 0) {
-    asbClassAverageScores = [
-      { component_name: "Visual Perception", average_standardized_score: 3 },
-      { component_name: "Spatial", average_standardized_score: 3 },
-      { component_name: "Reasoning", average_standardized_score: 3 },
-      { component_name: "Numerical", average_standardized_score: 3 },
-      { component_name: "Gestalt", average_standardized_score: 3 },
-      { component_name: "Co-ordination", average_standardized_score: 3 },
-      { component_name: "Memory", average_standardized_score: 3 },
-      { component_name: "Verbal Comprehension", average_standardized_score: 3 },
-    ];
-  }
-
-  console.log("[StudentPage] Props for ASBProfileChart:", { studentName, asbScores, asbClassAverageScores });
+  console.log("[StudentPage] Props for ASBProfileChart:", { studentName, asbScores });
 
   // Get the active tab from search params or default to "info"
   const activeTab = typeof resolvedSearch.tab === 'string' && 
@@ -489,6 +495,24 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     
   console.log("[StudentPage] Prepared progress data:", progressData);
 
+  // Use mock data if no actual data is available
+  if (combinedStudentData) {
+    studentInfo = {
+      ...studentInfo,
+      specialNeeds: {
+        occupationalTherapy: combinedStudentData.occupational_therapy || "None",
+        speechTherapy: combinedStudentData.speech_language_therapy || "None",
+        medication: combinedStudentData.medication || "None",
+        counselling: combinedStudentData.counselling || "None"
+      },
+      healthInfo: {
+        eyesight: (combinedStudentData as any).eyesight || "None",
+        speech: (combinedStudentData as any).speech || "None",
+        hearing: (combinedStudentData as any).hearing || "None"
+      }
+    };
+  }
+
   return (
     <div className="flex-1 w-full flex flex-col gap-8">
       <div className="flex items-center gap-2">
@@ -528,7 +552,21 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
         {/* Student Information Tab */}
         <TabsContent value="info" className="mt-6">
           <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-            <h2 className="text-lg font-medium p-6 border-b border-gray-100">Student Information</h2>
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <h2 className="text-lg font-medium">Student Information</h2>
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2 text-[#f6822d] border-[#f6822d] hover:bg-orange-50"
+                asChild
+              >
+                <Link href={`/protected/students/${id}/edit${classId ? `?classId=${classId}` : ''}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit Student
+                </Link>
+              </Button>
+            </div>
             <div className="py-6 px-6">
               {/* Top row - Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
@@ -549,28 +587,28 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Date of Birth</div>
-                  <div className="font-medium">{studentData?.date_of_birth?.substring(0, 10) || studentInfo.dateOfBirth}</div>
+                  <div className="font-medium">{combinedStudentData?.date_of_birth?.substring(0, 10) || studentInfo.dateOfBirth}</div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Gender</div>
-                  <div className="font-medium">{studentData?.gender ? 
-                    studentData.gender.charAt(0).toUpperCase() + studentData.gender.slice(1) : 
+                  <div className="font-medium">{combinedStudentData?.gender ? 
+                    combinedStudentData.gender.charAt(0).toUpperCase() + combinedStudentData.gender.slice(1) : 
                     studentInfo.gender.charAt(0).toUpperCase() + studentInfo.gender.slice(1)}</div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Home Language</div>
-                  <div className="font-medium">{studentData?.home_language ? 
-                    studentData.home_language.charAt(0).toUpperCase() + studentData.home_language.slice(1) : 
+                  <div className="font-medium">{combinedStudentData?.home_language ? 
+                    combinedStudentData.home_language.charAt(0).toUpperCase() + combinedStudentData.home_language.slice(1) : 
                     studentInfo.homeLanguage.charAt(0).toUpperCase() + studentInfo.homeLanguage.slice(1)}</div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500 mb-1">School</div>
-                  <div className="font-medium">{studentData && studentData.schools && 
-                    (typeof studentData.schools === 'object' && studentData.schools !== null && 'name' in studentData.schools) ? 
-                    (studentData.schools as any).name : 
+                  <div className="font-medium">{combinedStudentData && combinedStudentData.schools && 
+                    (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'name' in combinedStudentData.schools) ? 
+                    (combinedStudentData.schools as any).name : 
                     studentInfo.school}</div>
                 </div>
                 
@@ -578,10 +616,10 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   <div className="text-sm text-gray-500 mb-1">Place</div>
                   <div className="font-medium">{
                     // Access location safely with proper type checking
-                    (studentData && 'location' in studentData && studentData.location) || 
-                    (studentData && studentData.schools && 
-                    (typeof studentData.schools === 'object' && studentData.schools !== null && 'Location' in studentData.schools) ?
-                    (studentData.schools as any).Location : 
+                    (combinedStudentData && 'location' in combinedStudentData && combinedStudentData.location) || 
+                    (combinedStudentData && combinedStudentData.schools && 
+                    (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'Location' in combinedStudentData.schools) ?
+                    (combinedStudentData.schools as any).Location : 
                     studentInfo.place)}</div>
                 </div>
               </div>
@@ -594,9 +632,9 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   <div className="bg-gray-50 p-4 rounded">
                     <div className="text-sm text-gray-500 mb-2">Chronological Age</div>
                     <div className="font-medium text-lg">
-                      {studentData?.date_of_birth ? 
+                      {combinedStudentData?.date_of_birth ? 
                         (() => {
-                          const chrono = calculateChronologicalAge(studentData.date_of_birth, currentDate, 'months');
+                          const chrono = calculateChronologicalAge(combinedStudentData.date_of_birth, currentDate, 'months');
                           if (!chrono) return "N/A";
                           const parts = chrono.split('.');
                           if (parts.length !== 2) return chrono; // Or handle more gracefully
@@ -742,7 +780,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Occupational */}
                   {(() => {
-                    const value = studentData?.occupational_therapy || studentInfo.specialNeeds.occupationalTherapy;
+                    const value = combinedStudentData?.occupational_therapy || studentInfo.specialNeeds.occupationalTherapy;
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
@@ -763,7 +801,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   
                   {/* Speech */}
                   {(() => {
-                    const value = studentData?.speech_language_therapy || studentInfo.specialNeeds.speechTherapy;
+                    const value = combinedStudentData?.speech_language_therapy || studentInfo.specialNeeds.speechTherapy;
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
@@ -784,7 +822,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   
                   {/* Medication */}
                   {(() => {
-                    const value = studentData?.medication || studentInfo.specialNeeds.medication;
+                    const value = combinedStudentData?.medication || studentInfo.specialNeeds.medication;
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
@@ -805,7 +843,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   
                   {/* Counselling */}
                   {(() => {
-                    const value = studentData?.counselling || studentInfo.specialNeeds.counselling;
+                    const value = combinedStudentData?.counselling || studentInfo.specialNeeds.counselling;
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
@@ -823,6 +861,24 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                       </div>
                     );
                   })()}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="font-semibold text-gray-700">Health Information</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Eyesight</p>
+                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.eyesight || "None"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Speech</p>
+                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.speech || "None"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Hearing</p>
+                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.hearing || "None"}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -845,7 +901,6 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 <ASBProfileChart 
                   studentName={studentName}
                   scores={asbScores}
-                  classAverageScores={asbClassAverageScores}
                 />
               ) : (
                 <div className="w-full h-64 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
