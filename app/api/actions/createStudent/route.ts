@@ -25,6 +25,14 @@ export async function POST(request: NextRequest) {
     const schoolIdFromForm = formData.get('schoolId') as string;
     const returnTo = formData.get('returnTo') as string;
     
+    // Convert string values to appropriate types
+    const convertToBoolean = (value: string | null): boolean | null => {
+      if (value === null || value === undefined || value === '') return null;
+      if (value === 'true' || value === 'yes') return true;
+      if (value === 'false' || value === 'no' || value === 'none') return false;
+      return value === 'true';
+    };
+    
     // Log the form data for debugging
     console.log('Form data received:', {
       firstName,
@@ -121,10 +129,10 @@ export async function POST(request: NextRequest) {
         ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
         ...(notes ? { notes } : {}),
         ...(place ? { location: place } : {}),
-        ...(occupationalTherapy ? { occupational_therapy: occupationalTherapy } : {}),
-        ...(speechTherapy ? { speech_language_therapy: speechTherapy } : {}),
+        ...(occupationalTherapy ? { occupational_therapy: convertToBoolean(occupationalTherapy) } : {}),
+        ...(speechTherapy ? { speech_language_therapy: convertToBoolean(speechTherapy) } : {}),
         ...(medication ? { medication } : {}),
-        ...(counselling ? { counselling } : {}),
+        ...(counselling ? { counselling: convertToBoolean(counselling) } : {}),
         ...(eyesight ? { eyesight } : {}),
         ...(speech ? { speech } : {}),
         ...(hearing ? { hearing } : {})

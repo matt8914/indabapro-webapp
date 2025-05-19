@@ -311,6 +311,14 @@ export const createStudentAction = async (formData: FormData) => {
   const medication = formData.get("medication")?.toString();
   const counselling = formData.get("counselling")?.toString();
   
+  // Convert string values to appropriate types
+  const convertToBoolean = (value: string | null | undefined): boolean | null => {
+    if (value === null || value === undefined || value === '') return null;
+    if (value === 'true' || value === 'yes') return true;
+    if (value === 'false' || value === 'no' || value === 'none') return false;
+    return value === 'true';
+  };
+  
   if (!firstName || !lastName || !gender || !classId) {
     return encodedRedirect(
       "error",
@@ -379,10 +387,10 @@ export const createStudentAction = async (formData: FormData) => {
       // Only include optional fields if they have values
       ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
       ...(notes ? { notes } : {}),
-      ...(occupationalTherapy ? { occupational_therapy: occupationalTherapy } : {}),
-      ...(speechTherapy ? { speech_language_therapy: speechTherapy } : {}),
+      ...(occupationalTherapy ? { occupational_therapy: convertToBoolean(occupationalTherapy) } : {}),
+      ...(speechTherapy ? { speech_language_therapy: convertToBoolean(speechTherapy) } : {}),
       ...(medication ? { medication } : {}),
-      ...(counselling ? { counselling } : {})
+      ...(counselling ? { counselling: convertToBoolean(counselling) } : {})
     };
     
     // Create the student in the database with type assertion to bypass TypeScript errors

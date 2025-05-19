@@ -38,6 +38,14 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Convert string values to appropriate types
+    const convertToBoolean = (value: string | null): boolean | null => {
+      if (value === null || value === undefined || value === '') return null;
+      if (value === 'true' || value === 'yes') return true;
+      if (value === 'false' || value === 'no' || value === 'none') return false;
+      return value === 'true';
+    };
+    
     // Update student record
     const { data: updateData, error: updateError } = await supabase
       .from('students')
@@ -49,10 +57,10 @@ export async function POST(request: NextRequest) {
         school_id: schoolId,
         location: place,
         home_language: homeLanguage,
-        occupational_therapy: occupationalTherapy,
-        speech_language_therapy: speechTherapy,
+        occupational_therapy: convertToBoolean(occupationalTherapy),
+        speech_language_therapy: convertToBoolean(speechTherapy),
         medication: medication,
-        counselling: counselling,
+        counselling: convertToBoolean(counselling),
         eyesight: eyesight,
         speech: speech,
         hearing: hearing,
