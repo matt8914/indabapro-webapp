@@ -6,6 +6,22 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { EditAssessmentForm } from "@/components/assessments/edit-assessment-form";
 
+// Define types for student data
+interface StudentFormData {
+  id: string;
+  name: string;
+  student_id?: string;
+  date_of_birth?: string | null;
+}
+
+// Define a generic score type that works for both academic ages and regular assessment scores
+interface AssessmentScore {
+  id?: string;
+  session_id: string;
+  student_id: string;
+  [key: string]: any; // Allow for flexible score properties
+}
+
 export default async function EditAssessmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: assessmentId } = await params;
   const supabase = await createClient();
@@ -75,7 +91,7 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
     return <div>Error loading enrollment data</div>;
   }
 
-  let students = [];
+  let students: StudentFormData[] = [];
   
   if (enrollments && enrollments.length > 0) {
     // Get the list of student IDs
@@ -110,7 +126,7 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
   ].includes(session.assessment_types.name);
 
   // Fetch existing scores
-  let existingScores: any[] = [];
+  let existingScores: AssessmentScore[] = [];
   
   if (isAcademicAgeAssessment) {
     // Fetch academic age scores
