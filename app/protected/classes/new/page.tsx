@@ -101,19 +101,6 @@ export default async function NewClassPage({ searchParams }: { searchParams: Pro
             </div>
           </div>
           
-          {/* Only show Teacher field for non-therapists */}
-          {!isTherapist && (
-            <div className="space-y-2">
-              <Label htmlFor="teacherName">Class Teacher</Label>
-              <Input 
-                id="teacherName" 
-                name="teacherName"
-                placeholder="Enter teacher's name" 
-                className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
-              />
-            </div>
-          )}
-          
           <div className="pt-4 flex justify-end gap-3">
             <Button variant="outline" asChild>
               <Link href="/protected/classes">Cancel</Link>
