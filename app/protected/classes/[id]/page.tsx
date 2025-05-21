@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentsTable } from "@/components/students/students-table";
 import { SearchedStudentsTable } from "@/components/students/searched-students-table";
 import { calculateChronologicalAge, formatChronologicalAge, formatAgeDifferenceInMonths } from "@/utils/academic-age-utils";
+import { ImportExportButtons } from "@/components/classes/import-export-buttons";
 
 // Define database types directly in this file instead of importing
 type Database = {
@@ -331,20 +332,7 @@ export default async function ClassDetailsPage({
       <div className="mt-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Student List</h2>
-          <div className="flex gap-3">
-            <Button asChild variant="outline" className="flex items-center gap-1">
-              <Link href="#">
-                <Upload className="h-4 w-4" />
-                Import List
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex items-center gap-1">
-              <Link href="#">
-                <Download className="h-4 w-4" />
-                Export
-              </Link>
-            </Button>
-          </div>
+          <ImportExportButtons classId={id} />
         </div>
         
         {studentsForTable.length > 0 ? (

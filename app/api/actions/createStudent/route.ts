@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const returnTo = formData.get('returnTo') as string;
     
     // Convert string values to appropriate types
+    // Note: Not used for therapy fields which must be text values: 'none', 'recommended', or 'attending'
     const convertToBoolean = (value: string | null): boolean | null => {
       if (value === null || value === undefined || value === '') return null;
       if (value === 'true' || value === 'yes') return true;
@@ -129,10 +130,10 @@ export async function POST(request: NextRequest) {
         ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
         ...(notes ? { notes } : {}),
         ...(place ? { location: place } : {}),
-        ...(occupationalTherapy ? { occupational_therapy: convertToBoolean(occupationalTherapy) } : {}),
-        ...(speechTherapy ? { speech_language_therapy: convertToBoolean(speechTherapy) } : {}),
+        ...(occupationalTherapy ? { occupational_therapy: occupationalTherapy } : {}),
+        ...(speechTherapy ? { speech_language_therapy: speechTherapy } : {}),
         ...(medication ? { medication } : {}),
-        ...(counselling ? { counselling: convertToBoolean(counselling) } : {}),
+        ...(counselling ? { counselling } : {}),
         ...(eyesight ? { eyesight } : {}),
         ...(speech ? { speech } : {}),
         ...(hearing ? { hearing } : {})
