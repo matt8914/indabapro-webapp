@@ -360,7 +360,7 @@ export function Sidebar({ currentPath }: SidebarProps) {
       <div className="px-4 py-2 text-xs text-gray-500 border-t border-gray-200">
         IndabaPro Teacher MVP
         <br />
-        © 2025 IndabaPro
+        © 2025 IndabaPro, SBST Software
       </div>
     </div>
   );

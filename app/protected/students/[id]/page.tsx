@@ -13,6 +13,7 @@ import {
   convertToSpellingAge, 
   convertToMathsAge 
 } from "@/utils/academic-age-utils";
+import { PrintStudentDetailsButton } from "@/components/students/print-student-details-button";
 
 // Define types for our data
 interface ASBScore {
@@ -554,18 +555,62 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
           <div className="bg-white shadow-sm rounded-lg overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h2 className="text-lg font-medium">Student Information</h2>
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 text-[#f6822d] border-[#f6822d] hover:bg-orange-50"
-                asChild
-              >
-                <Link href={`/protected/students/${id}/edit${classId ? `?classId=${classId}` : ''}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Edit Student
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                <PrintStudentDetailsButton 
+                  studentData={{
+                    fullName: studentName,
+                    className: className,
+                    teacher: teacherName,
+                    dateOfBirth: combinedStudentData?.date_of_birth || studentInfo.dateOfBirth,
+                    gender: combinedStudentData?.gender || studentInfo.gender,
+                    homeLanguage: combinedStudentData?.home_language || studentInfo.homeLanguage,
+                    school: (combinedStudentData && combinedStudentData.schools && 
+                      (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'name' in combinedStudentData.schools) ? 
+                      (combinedStudentData.schools as any).name : 
+                      studentInfo.school),
+                    place: (combinedStudentData && 'location' in combinedStudentData && combinedStudentData.location) || 
+                      (combinedStudentData && combinedStudentData.schools && 
+                      (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'Location' in combinedStudentData.schools) ?
+                      (combinedStudentData.schools as any).Location : 
+                      studentInfo.place),
+                    chronologicalAge: combinedStudentData?.date_of_birth ? 
+                      (() => {
+                        const chrono = calculateChronologicalAge(combinedStudentData.date_of_birth, currentDate, 'months');
+                        if (!chrono) return "N/A";
+                        const parts = chrono.split('.');
+                        if (parts.length !== 2) return chrono;
+                        const years = parseInt(parts[0], 10);
+                        const months = parseInt(parts[1], 10);
+                        return `${years}y ${months}m`;
+                      })() : 
+                      "N/A",
+                    mathsAge: mathsAge,
+                    spellingAge: spellingAge,
+                    readingAge: readingAge,
+                    occupationalTherapy: combinedStudentData?.occupational_therapy || studentInfo.specialNeeds.occupationalTherapy,
+                    speechTherapy: combinedStudentData?.speech_language_therapy || studentInfo.specialNeeds.speechTherapy,
+                    medication: combinedStudentData?.medication || studentInfo.specialNeeds.medication,
+                    counselling: combinedStudentData?.counselling || studentInfo.specialNeeds.counselling,
+                    eyesight: (combinedStudentData as any)?.eyesight || studentInfo.healthInfo?.eyesight,
+                    speech: (combinedStudentData as any)?.speech || studentInfo.healthInfo?.speech,
+                    hearing: (combinedStudentData as any)?.hearing || studentInfo.healthInfo?.hearing,
+                    asbTestDate: asbTestDate
+                  }}
+                  asbChartElementId="asb-profile-chart"
+                />
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2 text-[#f6822d] border-[#f6822d] hover:bg-orange-50"
+                  asChild
+                >
+                  <Link href={`/protected/students/${id}/edit${classId ? `?classId=${classId}` : ''}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    Edit Student
+                  </Link>
+                </Button>
+              </div>
             </div>
             <div className="py-6 px-6">
               {/* Top row - Basic Information */}
@@ -864,21 +909,61 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h2 className="font-semibold text-gray-700">Health Information</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Eyesight</p>
-                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.eyesight || "None"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Speech</p>
-                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.speech || "None"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Hearing</p>
-                    <p className="mt-1 text-sm text-gray-900">{studentInfo.healthInfo?.hearing || "None"}</p>
-                  </div>
+              {/* Health Information Section */}
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <h3 className="text-base font-medium mb-4">Health Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Eyesight */}
+                  {(() => {
+                    const value = combinedStudentData?.eyesight || studentInfo.healthInfo?.eyesight || "none";
+                    const displayValue = value === "none" ? "None" : 
+                                        value === "glasses" ? "Glasses" : 
+                                        value === "squint" ? "Squint" : 
+                                        value.charAt(0).toUpperCase() + value.slice(1);
+                    
+                    const bgColor = value === "none" ? "bg-gray-50" : "bg-blue-50";
+                    
+                    return (
+                      <div className={`p-3 rounded ${bgColor}`}>
+                        <div className="text-sm text-gray-500 mb-1">Eyesight</div>
+                        <div className="font-medium">{displayValue}</div>
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Speech */}
+                  {(() => {
+                    const value = combinedStudentData?.speech || studentInfo.healthInfo?.speech || "none";
+                    const displayValue = value === "none" ? "None" : 
+                                        value === "stutter" ? "Stutter" : 
+                                        value.charAt(0).toUpperCase() + value.slice(1);
+                    
+                    const bgColor = value === "none" ? "bg-gray-50" : "bg-blue-50";
+                    
+                    return (
+                      <div className={`p-3 rounded ${bgColor}`}>
+                        <div className="text-sm text-gray-500 mb-1">Speech</div>
+                        <div className="font-medium">{displayValue}</div>
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Hearing */}
+                  {(() => {
+                    const value = combinedStudentData?.hearing || studentInfo.healthInfo?.hearing || "none";
+                    const displayValue = value === "none" ? "None" : 
+                                        value === "hard_of_hearing" ? "Hard of Hearing" : 
+                                        value.charAt(0).toUpperCase() + value.slice(1);
+                    
+                    const bgColor = value === "none" ? "bg-gray-50" : "bg-blue-50";
+                    
+                    return (
+                      <div className={`p-3 rounded ${bgColor}`}>
+                        <div className="text-sm text-gray-500 mb-1">Hearing</div>
+                        <div className="font-medium">{displayValue}</div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

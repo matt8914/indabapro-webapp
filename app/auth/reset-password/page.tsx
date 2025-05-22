@@ -22,6 +22,9 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
     setMessage(null);
     
+    // Log the state at the beginning of the function
+    console.log("Starting password reset process", { passwordLength: password.length });
+    
     if (password !== confirmPassword) {
       setMessage({ type: "error", text: "Passwords do not match" });
       setIsLoading(false);
@@ -35,11 +38,15 @@ export default function ResetPasswordPage() {
     }
     
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      console.log("Attempting to update user password");
+      const { data, error } = await supabase.auth.updateUser({ password });
+      console.log("Password update result:", { success: !error, userId: data?.user?.id });
       
       if (error) {
+        console.error("Password update error:", error);
         setMessage({ type: "error", text: error.message });
       } else {
+        console.log("Password updated successfully, redirecting to sign-in");
         setMessage({ 
           type: "success", 
           text: "Password updated successfully! You will be redirected to sign in." 
@@ -51,6 +58,7 @@ export default function ResetPasswordPage() {
         }, 2000);
       }
     } catch (error) {
+      console.error("Password update exception:", error);
       setMessage({ 
         type: "error", 
         text: "An error occurred while resetting your password." 

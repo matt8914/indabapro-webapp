@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical, Edit } from "lucide-react";
+import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical, Edit, RefreshCw } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { convertTenthsToYearsMonths } from "@/utils/academic-age-utils";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -91,18 +91,20 @@ export function AssessmentViewTab({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Define academic age assessment types
   const academicAgeTypes = [
     "YOUNG Maths A Assessment",
-    "SPAR Reading Assessment",
+    "SPAR Reading Assessment A",
+    "SPAR Reading Assessment B",
     "Schonell Spelling A"
   ];
 
   // Get academic age test type
   const getAcademicAgeType = (assessmentType: string): 'maths' | 'reading' | 'spelling' | null => {
     if (assessmentType === "YOUNG Maths A Assessment") return 'maths';
-    if (assessmentType === "SPAR Reading Assessment") return 'reading';
+    if (assessmentType === "SPAR Reading Assessment A" || assessmentType === "SPAR Reading Assessment B") return 'reading';
     if (assessmentType === "Schonell Spelling A") return 'spelling';
     return null;
   };
@@ -117,6 +119,19 @@ export function AssessmentViewTab({
     const matchesType = selectedType === "all" || session.assessmentTypeId === selectedType;
     
     return matchesSearch && matchesClass && matchesType;
+  }).sort((a, b) => {
+    // Sort by date in descending order (newest first)
+    // Parse the ISO date strings to ensure we capture both date and time components
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    
+    // If the timestamps are the same, use the id as a tiebreaker
+    // This assumes newer records have higher IDs in the database
+    if (dateA === dateB) {
+      return a.id > b.id ? -1 : 1;
+    }
+    
+    return dateB - dateA;
   });
 
   // Get all assessment types as a flat array
@@ -319,6 +334,13 @@ export function AssessmentViewTab({
     }
   };
 
+  // Add a function to manually refresh the page
+  const handleRefresh = () => {
+    setRefreshing(true);
+    // Use reload to get fresh data from the server
+    window.location.reload();
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -361,6 +383,23 @@ export function AssessmentViewTab({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        
+        {/* Refresh Button and Assessment List Header */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-md font-medium text-gray-700">
+            {filteredSessions.length} {filteredSessions.length === 1 ? 'Assessment' : 'Assessments'} Found
+          </h3>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex gap-2 items-center"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
         </div>
         
         {/* Assessment List */}
@@ -482,7 +521,8 @@ export function AssessmentViewTab({
                                               : "bg-green-100 text-green-800 hover:bg-green-100"
                                           }
                                         >
-                                          {student.academicAges.ageDifference}
+                                          {student.academicAges.isDeficit ? '-' : ''}
+                                          {convertTenthsToYearsMonths(student.academicAges.ageDifference.replace('-', ''))}
                                         </Badge>
                                       )}
                                     </td>

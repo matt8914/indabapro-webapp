@@ -19,38 +19,82 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("teacher");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Create a message object from searchParams
   const message: Message | null = (() => {
     const success = searchParams.get("success");
     const error = searchParams.get("error");
+    const info = searchParams.get("info");
+    const warning = searchParams.get("warning");
     const messageText = searchParams.get("message");
     
     if (success) return { success };
     if (error) return { error };
+    if (info) return { info };
+    if (warning) return { warning };
     if (messageText) return { message: messageText };
     return null;
   })();
 
   if (message) {
     return (
-      <div className="w-full flex-1 flex items-center justify-center gap-2 p-4">
+      <div className="w-full flex-1 flex flex-col items-center justify-center gap-4 p-4">
         <FormMessage message={message} />
+        {message.success && (
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">
+              Please check your email for a verification link.
+            </p>
+            <Link 
+              className="text-[#f6822d] hover:text-orange-600 font-medium"
+              href="/sign-in"
+            >
+              Return to Sign In
+            </Link>
+          </div>
+        )}
+        {message.info && message.info.includes("already registered") && (
+          <div className="text-center">
+            <Link 
+              className="text-[#f6822d] hover:text-orange-600 font-medium"
+              href="/sign-in"
+            >
+              Go to Sign In
+            </Link>
+          </div>
+        )}
+        {message.error && (
+          <Link 
+            className="text-[#f6822d] hover:text-orange-600 font-medium"
+            href="/sign-up"
+          >
+            Try Again
+          </Link>
+        )}
       </div>
     );
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append("firstName", firstName);
-    formData.append("lastName", lastName);
-    formData.append("email", email);
-    formData.append("password", password);
-    formData.append("role", role);
+    setIsSubmitting(true);
     
-    // Submit the form using the server action
-    await signUpAction(formData);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", firstName);
+      formData.append("lastName", lastName);
+      formData.append("email", email);
+      formData.append("password", password);
+      formData.append("role", role);
+      
+      // Submit the form using the server action
+      await signUpAction(formData);
+    } catch (error) {
+      console.error("Sign up error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -143,8 +187,11 @@ function SignupForm() {
         </div>
         
         <div className="mt-2">
-          <SubmitButton className="w-full bg-[#f6822d] hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-[#f6822d] focus:ring-opacity-50 transition">
-            Sign Up
+          <SubmitButton 
+            className="w-full bg-[#f6822d] hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-[#f6822d] focus:ring-opacity-50 transition"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating Account..." : "Sign Up"}
           </SubmitButton>
         </div>
       </div>

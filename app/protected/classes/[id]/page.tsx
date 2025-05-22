@@ -332,7 +332,18 @@ export default async function ClassDetailsPage({
       <div className="mt-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Student List</h2>
-          <ImportExportButtons classId={id} />
+          <ImportExportButtons 
+            classId={id}
+            classData={{
+              id: classData.id,
+              className: classData.class_name,
+              gradeLevel: classData.grade_level,
+              academicYear: classData.academic_year,
+              teacher: displayName,
+              isTherapistClass: isTherapistClass
+            } as any}
+            studentsData={studentsForTable as any}
+          />
         </div>
         
         {studentsForTable.length > 0 ? (

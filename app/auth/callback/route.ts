@@ -11,14 +11,30 @@ export async function GET(request: Request) {
   const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
   const type = requestUrl.searchParams.get("type");
 
+  console.log("Auth callback params:", { 
+    hasCode: !!code,
+    redirectTo,
+    type,
+  });
+
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const exchangeResult = await supabase.auth.exchangeCodeForSession(code);
+    console.log("Code exchange result:", { 
+      success: !exchangeResult.error,
+      hasSession: !!exchangeResult.data.session,
+    });
     
     // After exchanging code for session, check if the user has a profile
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
+      console.log("User found:", { 
+        id: user.id,
+        email: user.email,
+        hasEmailConfirmed: !!user.email_confirmed_at,
+      });
+      
       // Check if user record exists in the database
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -36,14 +52,23 @@ export async function GET(request: Request) {
 
   // If this is a password reset redirect, send to reset password page
   if (type === "recovery") {
+    console.log("Recovery flow detected, redirecting to reset-password page");
+    return NextResponse.redirect(`${origin}/auth/reset-password`);
+  }
+  
+  // Handle explicit redirect to reset password
+  if (redirectTo === "/protected/reset-password") {
+    console.log("Explicit reset password redirect detected");
     return NextResponse.redirect(`${origin}/auth/reset-password`);
   }
 
   // For other redirections specified in the URL
   if (redirectTo) {
+    console.log(`Redirecting to: ${redirectTo}`);
     return NextResponse.redirect(`${origin}${redirectTo}`);
   }
 
   // Default redirect for sign up/sign in
+  console.log("Default redirect to protected route");
   return NextResponse.redirect(`${origin}/protected`);
 }

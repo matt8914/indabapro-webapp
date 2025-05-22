@@ -4,9 +4,9 @@ import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { Suspense } from "react";
 
-export default async function Login(props: { searchParams: Promise<Message> }) {
-  const searchParams = await props.searchParams;
+function LoginForm({ searchParams }: { searchParams: Message | null }) {
   return (
     <form className="flex-1 flex flex-col w-full">
       <h1 className="text-2xl font-semibold text-gray-900">Sign in</h1>
@@ -16,6 +16,13 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
           Sign up
         </Link>
       </p>
+      
+      {searchParams && (
+        <div className="mb-4">
+          <FormMessage message={searchParams} />
+        </div>
+      )}
+      
       <div className="flex flex-col gap-4 mt-2">
         <div className="space-y-2">
           <Label htmlFor="email" className="text-gray-700">Email</Label>
@@ -54,9 +61,56 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
           >
             Sign in
           </SubmitButton>
-          <FormMessage message={searchParams} />
         </div>
       </div>
     </form>
+  );
+}
+
+// Loading fallback for the Suspense boundary
+function LoginLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="p-4 max-w-md w-full">
+        <div className="animate-pulse space-y-6">
+          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-full flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function Login({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+  // Convert the search params to a Message object
+  const message: Message | null = (() => {
+    const success = searchParams.success?.toString();
+    const error = searchParams.error?.toString();
+    const info = searchParams.info?.toString();
+    const warning = searchParams.warning?.toString();
+    const messageText = searchParams.message?.toString();
+    
+    if (success) return { success };
+    if (error) return { error };
+    if (info) return { info };
+    if (warning) return { warning };
+    if (messageText) return { message: messageText };
+    return null;
+  })();
+  
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm searchParams={message} />
+    </Suspense>
   );
 }

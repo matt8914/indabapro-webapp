@@ -121,7 +121,8 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
   // Check if this is an academic age assessment
   const isAcademicAgeAssessment = [
     "YOUNG Maths A Assessment",
-    "SPAR Reading Assessment",
+    "SPAR Reading Assessment A",
+    "SPAR Reading Assessment B",
     "Schonell Spelling A"
   ].includes(session.assessment_types.name);
 

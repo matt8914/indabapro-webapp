@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Validate required fields
-    if (!firstName || !lastName || !gender) {
+    if (!firstName || !lastName || !gender || !studentIdInput || !place || !dateOfBirth || !homeLanguage) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }

@@ -40,11 +40,34 @@ export const signUpAction = async (formData: FormData) => {
 
   if (authError) {
     console.error(authError.code + " " + authError.message);
+    
+    // Handle case where user already exists
+    if (authError.status === 400 && 
+        (authError.message.includes("already registered") || 
+         authError.message.includes("already in use"))) {
+      return encodedRedirect(
+        "info", 
+        "/sign-in",
+        "An account may already exist with this email. Please try signing in instead."
+      );
+    }
+    
     return encodedRedirect("error", "/sign-up", authError.message);
   }
   
-  // The user profile will be created after email verification when they visit /auth/complete-profile
+  // Check for user already registered case that didn't result in an error
+  // This happens when a user is registered but not confirmed
+  if (authData?.user && !authData.user.email_confirmed_at) {
+    console.log("User exists but email not confirmed");
+    // Send them to check email rather than creating a new account
+    return encodedRedirect(
+      "info",
+      "/sign-up",
+      "This email is already registered. Please check your email for the verification link we sent previously."
+    );
+  }
   
+  // Normal sign-up flow - new user created
   return encodedRedirect(
     "success",
     "/sign-up",

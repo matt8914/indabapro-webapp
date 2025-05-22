@@ -10,7 +10,8 @@ const messageVariants = cva("p-4 rounded-lg text-sm flex items-start gap-3", {
       default: "bg-gray-100 text-gray-800 border border-gray-200",
       success: "bg-green-50 text-green-800 border border-green-100",
       error: "bg-red-50 text-red-800 border border-red-100 font-medium",
-      warning: "bg-yellow-50 text-yellow-800 border border-yellow-100"
+      warning: "bg-yellow-50 text-yellow-800 border border-yellow-100",
+      info: "bg-blue-50 text-blue-800 border border-blue-100"
     }
   },
   defaultVariants: {
@@ -23,6 +24,7 @@ export type Message = {
   error?: string;
   success?: string;
   warning?: string;
+  info?: string;
 };
 
 interface FormMessageProps extends VariantProps<typeof messageVariants> {
@@ -36,17 +38,19 @@ export function FormMessage({ message, className, variant }: FormMessageProps) {
     if (message.success) return "success";
     if (message.error) return "error";
     if (message.warning) return "warning";
+    if (message.info) return "info";
     return "default";
   })();
   
   // Get the message content based on the message object fields
-  const content = message.success || message.error || message.warning || message.message;
+  const content = message.success || message.error || message.warning || message.info || message.message;
   
   // Select the appropriate icon based on the variant
   const Icon = {
     success: CheckCircle,
     error: AlertCircle,
     warning: AlertCircle,
+    info: Info,
     default: Info
   }[computedVariant];
   

@@ -131,6 +131,7 @@ export function EditAssessmentForm({
   const [scores, setScores] = useState<ScoresState>({});
   const [academicAgeScores, setAcademicAgeScores] = useState<AcademicAgeScoresState>({});
   const [remarks, setRemarks] = useState(session.remarks || "");
+  const [testDate, setTestDate] = useState(session.test_date);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -152,7 +153,7 @@ export function EditAssessmentForm({
           rawScore: existingScore ? String(existingScore.raw_score) : "",
           academicAge: existingScore ? existingScore.academic_age : "",
           chronologicalAge: existingScore ? existingScore.chronological_age : 
-            (student.date_of_birth ? calculateChronologicalAge(student.date_of_birth, session.test_date) : ""),
+            (student.date_of_birth ? calculateChronologicalAge(student.date_of_birth, testDate) : ""),
           ageDifference: existingScore ? existingScore.age_difference : "",
           isDeficit: existingScore ? existingScore.is_deficit : false
         };
@@ -179,7 +180,7 @@ export function EditAssessmentForm({
       
       setScores(initialScores);
     }
-  }, [students, existingScores, isAcademicAgeAssessment, session.test_date]);
+  }, [students, existingScores, isAcademicAgeAssessment, testDate]);
 
   // Get current assessment type
   const getCurrentAssessmentType = () => {
@@ -238,7 +239,7 @@ export function EditAssessmentForm({
     if (!student || !student.date_of_birth) return;
     
     // Calculate chronological age
-    const chronologicalAge = calculateChronologicalAge(student.date_of_birth, session.test_date);
+    const chronologicalAge = calculateChronologicalAge(student.date_of_birth, testDate);
     
     // Calculate academic age based on assessment type
     let academicAge = "";
@@ -246,7 +247,7 @@ export function EditAssessmentForm({
       academicAge = convertToMathsAge(rawScore as number);
     } else if (session.assessment_types.name === "Schonell Spelling A" && rawScore !== "") {
       academicAge = convertToSpellingAge(rawScore as number);
-    } else if (session.assessment_types.name === "SPAR Reading Assessment" && rawScore !== "") {
+    } else if ((session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") && rawScore !== "") {
       academicAge = convertToReadingAge(rawScore as number);
     }
     
@@ -356,6 +357,46 @@ export function EditAssessmentForm({
     }
   };
 
+  // Add a function to handle test date changes
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setTestDate(newDate);
+    
+    // If this is an academic age assessment, we need to recalculate all chronological ages
+    if (isAcademicAgeAssessment) {
+      // Create a new object to avoid mutating the original state
+      const updatedScores: AcademicAgeScoresState = {};
+      
+      // Update each student's record
+      Object.keys(academicAgeScores).forEach(studentId => {
+        const student = students.find(s => s.id === studentId);
+        const currentScore = academicAgeScores[studentId];
+        
+        if (student?.date_of_birth && currentScore.rawScore) {
+          // Recalculate chronological age with the new date
+          const chronologicalAge = calculateChronologicalAge(student.date_of_birth, newDate);
+          const academicAge = currentScore.academicAge;
+          const ageDiff = calculateAgeDifference(academicAge, chronologicalAge);
+          const deficit = isDeficit(academicAge, chronologicalAge);
+          
+          // Create updated record
+          updatedScores[studentId] = {
+            ...currentScore,
+            chronologicalAge,
+            ageDifference: ageDiff,
+            isDeficit: deficit
+          };
+        } else {
+          // Keep the original record
+          updatedScores[studentId] = { ...currentScore };
+        }
+      });
+      
+      // Set the new state
+      setAcademicAgeScores(updatedScores);
+    }
+  };
+
   // Handle update for regular assessment scores
   const handleUpdateRegularScores = async () => {
     setSubmitting(true);
@@ -365,6 +406,20 @@ export function EditAssessmentForm({
     try {
       const supabase = createClient();
       
+      console.log('Updating assessment with date:', testDate);
+      
+      // 1. First, update the assessment session to save the date and remarks
+      const { error: sessionError } = await supabase
+        .from('assessment_sessions')
+        .update({ 
+          remarks,
+          test_date: testDate
+        })
+        .eq('id', session.id);
+      
+      if (sessionError) throw new Error(sessionError.message);
+      
+      // 2. Process and save student scores
       // Get existing score records to compare against
       const existingScoreRecords = existingScores as RegularScore[];
       
@@ -430,17 +485,6 @@ export function EditAssessmentForm({
         if (insertError) throw new Error(insertError.message);
       }
       
-      // Update session remarks
-      const { error: remarksError } = await supabase
-        .from('assessment_sessions')
-        .update({ 
-          remarks,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', session.id);
-        
-      if (remarksError) throw new Error(remarksError.message);
-      
       setSuccess('Assessment scores updated successfully!');
       
       // Redirect back to assessments page after successful update
@@ -466,10 +510,24 @@ export function EditAssessmentForm({
     try {
       const supabase = createClient();
       
+      console.log('Updating academic age assessment with date:', testDate);
+      
+      // 1. First, update the assessment session with remarks and test date
+      const { error: sessionError } = await supabase
+        .from('assessment_sessions')
+        .update({ 
+          remarks,
+          test_date: testDate
+        })
+        .eq('id', session.id);
+      
+      if (sessionError) throw new Error(sessionError.message);
+      
+      // 2. Update/Insert academic age scores
       // Determine test type
       let academicAgeType: 'maths' | 'reading' | 'spelling' | null = null;
       if (session.assessment_types.name === "YOUNG Maths A Assessment") academicAgeType = 'maths';
-      if (session.assessment_types.name === "SPAR Reading Assessment") academicAgeType = 'reading';
+      if (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") academicAgeType = 'reading';
       if (session.assessment_types.name === "Schonell Spelling A") academicAgeType = 'spelling';
       
       if (!academicAgeType) {
@@ -535,17 +593,6 @@ export function EditAssessmentForm({
         if (insertError) throw new Error(insertError.message);
       }
       
-      // Update session remarks
-      const { error: remarksError } = await supabase
-        .from('assessment_sessions')
-        .update({ 
-          remarks,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', session.id);
-        
-      if (remarksError) throw new Error(remarksError.message);
-      
       setSuccess('Academic age scores updated successfully!');
       
       // Redirect back to assessments page after successful update
@@ -568,7 +615,7 @@ export function EditAssessmentForm({
     
     if (session.assessment_types.name === "YOUNG Maths A Assessment") {
       return convertTenthsToYearsMonths(academicAge);
-    } else if (session.assessment_types.name === "SPAR Reading Assessment") {
+    } else if (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") {
       return convertTenthsToYearsMonths(academicAge);
     } else if (session.assessment_types.name === "Schonell Spelling A") {
       return convertTenthsToYearsMonths(academicAge);
@@ -609,9 +656,9 @@ export function EditAssessmentForm({
               <div className="relative">
                 <input 
                   type="date"
-                  value={session.test_date}
-                  disabled
-                  className="w-full rounded-md border border-input bg-gray-50 px-3 py-2 text-sm"
+                  value={testDate}
+                  onChange={handleDateChange}
+                  className="w-full rounded-md border border-input px-3 py-2 text-sm"
                 />
               </div>
             </div>
@@ -632,7 +679,7 @@ export function EditAssessmentForm({
                         Raw Score
                         <div className="text-xs text-gray-400">
                           {session.assessment_types.name === "YOUNG Maths A Assessment" && "(0-56)"}
-                          {session.assessment_types.name === "SPAR Reading Assessment" && "(0-42)"}
+                          {(session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") && "(0-42)"}
                           {session.assessment_types.name === "Schonell Spelling A" && "(0-80)"}
                         </div>
                       </th>
@@ -654,7 +701,7 @@ export function EditAssessmentForm({
                             min={0}
                             max={
                               session.assessment_types.name === "YOUNG Maths A Assessment" ? 56 :
-                              session.assessment_types.name === "SPAR Reading Assessment" ? 42 :
+                              (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") ? 42 :
                               80
                             }
                             className="w-20 text-center rounded-md border border-input px-3 py-1"
@@ -678,7 +725,8 @@ export function EditAssessmentForm({
                                   : "bg-green-100 text-green-800 hover:bg-green-100"
                               }
                             >
-                              {academicAgeScores[student.id].ageDifference}
+                              {academicAgeScores[student.id].isDeficit ? '-' : ''}
+                              {convertTenthsToYearsMonths(academicAgeScores[student.id].ageDifference.replace('-', ''))}
                             </Badge>
                           )}
                         </td>

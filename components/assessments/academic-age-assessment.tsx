@@ -47,8 +47,7 @@ interface AcademicAgeAssessmentProps {
   testType: 'maths' | 'reading' | 'spelling';
   testTypeName: string;
   testDate: string;
-  sessionId: string;
-  onSaveComplete: () => void;
+  onSaveComplete: (academicAgeScores: AcademicAgeScoresState) => void;
   onCancel: () => void;
 }
 
@@ -57,7 +56,6 @@ export function AcademicAgeAssessment({
   testType,
   testTypeName,
   testDate,
-  sessionId,
   onSaveComplete,
   onCancel
 }: AcademicAgeAssessmentProps) {
@@ -161,54 +159,11 @@ export function AcademicAgeAssessment({
     setError(null);
     
     try {
-      const supabase = createClient();
-      
-      // Prepare scores for insertion
-      const scoresToInsert = [];
-      
-      for (const student of students) {
-        const studentScore = scores[student.id];
-        
-        if (studentScore && studentScore.rawScore) {
-          scoresToInsert.push({
-            student_id: student.id,
-            session_id: sessionId,
-            test_type: testType,
-            raw_score: parseInt(studentScore.rawScore, 10),
-            academic_age: studentScore.academicAge,
-            chronological_age: studentScore.chronologicalAgeMonths, // Save in months format
-            age_difference: studentScore.ageDifferenceMonths, // Save difference in months format
-            is_deficit: studentScore.isDeficit
-          });
-        }
-      }
-      
-      // Insert academic ages
-      if (scoresToInsert.length > 0) {
-        // Insert into student_academic_ages table with proper typing
-        const { error: agesError } = await supabase
-          .from('student_academic_ages')
-          .insert(scoresToInsert);
-          
-        if (agesError) throw new Error(agesError.message);
-      }
-      
-      // Update session remarks if any
-      if (remarks) {
-        const { error: remarksError } = await supabase
-          .from('assessment_sessions')
-          .update({ remarks })
-          .eq('id', sessionId);
-          
-        if (remarksError) throw new Error(remarksError.message);
-      }
-      
-      // Notify parent of completion
-      onSaveComplete();
-      
+      // Instead of saving to database, pass scores back to parent component
+      onSaveComplete(scores);
     } catch (err) {
-      console.error('Error saving assessment:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save assessment');
+      console.error('Error handling academic age scores:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setSubmitting(false);
     }

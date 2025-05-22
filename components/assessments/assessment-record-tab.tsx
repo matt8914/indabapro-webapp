@@ -49,6 +49,18 @@ interface ScoresState {
   };
 }
 
+interface AcademicAgeScoresState {
+  [studentId: string]: {
+    rawScore: string;
+    academicAge: string;
+    chronologicalAge: string;
+    chronologicalAgeMonths: string;
+    ageDifference: string;
+    ageDifferenceMonths: string;
+    isDeficit: boolean;
+  };
+}
+
 interface AssessmentRecordTabProps {
   classes: Class[];
   assessmentCategories: AssessmentCategory[];
@@ -78,12 +90,12 @@ export function AssessmentRecordTab({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
-  const [sessionId, setSessionId] = useState<string>("");
   
   // Define academic age assessment types
   const academicAgeTypes = [
     "YOUNG Maths A Assessment",
-    "SPAR Reading Assessment",
+    "SPAR Reading Assessment A",
+    "SPAR Reading Assessment B",
     "Schonell Spelling A"
   ];
   
@@ -99,7 +111,8 @@ export function AssessmentRecordTab({
     if (!currentType) return null;
     
     if (currentType.name === "YOUNG Maths A Assessment") return 'maths';
-    if (currentType.name === "SPAR Reading Assessment") return 'reading';
+    if (currentType.name === "SPAR Reading Assessment A") return 'reading';
+    if (currentType.name === "SPAR Reading Assessment B") return 'reading';
     if (currentType.name === "Schonell Spelling A") return 'spelling';
     
     return null;
@@ -320,49 +333,28 @@ export function AssessmentRecordTab({
   
   // Handle continue button click
   const handleContinue = async () => {
-    // Create the assessment session first
     try {
       setSubmitting(true);
       setError(null);
-      const supabase = createClient();
       
-      // Create assessment session
-      const { data: session, error: sessionError } = await supabase
-        .from('assessment_sessions')
-        .insert({
-          assessment_type_id: selectedType,
-          class_id: selectedClass,
-          tester_id: userId,
-          test_date: testDate,
-          remarks: ""
-        })
-        .select('id')
-        .single();
-        
-      if (sessionError) {
-        console.error('Error creating assessment session:', sessionError);
-        setError(sessionError.message || 'Failed to create assessment session');
+      // Validate inputs - but don't create a database record yet
+      if (!selectedClass || !selectedCategory || !selectedType || !testDate) {
+        setError('Please complete all fields before continuing');
         setSubmitting(false);
         return;
       }
-      
-      if (session && session.id) {
-        // Save session ID for the assessment forms
-        setSessionId(session.id);
-        
-        // Reset scores if not academic age assessment
-        if (!isAcademicAgeAssessment()) {
-          resetScores();
-        }
-        
-        setShowScoreForm(true);
-      } else {
-        setError('Failed to create assessment session - no session ID returned');
+
+      // Reset scores if not academic age assessment
+      if (!isAcademicAgeAssessment()) {
+        resetScores();
       }
       
+      // Just show the score form - we'll create the record when saving
+      setShowScoreForm(true);
+      
     } catch (err) {
-      console.error('Error creating assessment session:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create assessment session');
+      console.error('Error in continue process:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setSubmitting(false);
     }
@@ -374,18 +366,113 @@ export function AssessmentRecordTab({
   };
 
   // Handle academic age assessment completion
-  const handleAcademicAgeComplete = () => {
-    setSuccess('Assessment scores saved successfully!');
+  const handleAcademicAgeComplete = async (academicAgeScores: AcademicAgeScoresState) => {
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
     
-    // Reset form
-    setSelectedClass("");
-    setSelectedCategory("");
-    setSelectedType("");
-    setTestDate("");
-    setRemarks("");
-    setScores({});
-    setSessionId("");
-    setShowScoreForm(false);
+    try {
+      const supabase = createClient();
+      
+      // 1. First, create the assessment session
+      const { data: session, error: sessionError } = await supabase
+        .from('assessment_sessions')
+        .insert({
+          assessment_type_id: selectedType,
+          class_id: selectedClass,
+          tester_id: userId,
+          test_date: testDate,
+          remarks: remarks
+        })
+        .select('id')
+        .single();
+        
+      if (sessionError) {
+        console.error('Error creating assessment session:', sessionError);
+        setError(sessionError.message || 'Failed to create assessment session');
+        setSubmitting(false);
+        return;
+      }
+      
+      if (!session || !session.id) {
+        setError('Failed to create assessment session - no session ID returned');
+        setSubmitting(false);
+        return;
+      }
+      
+      // 2. Get the session ID
+      const sessionId = session.id;
+      
+      // 3. Determine academic age test type
+      let academicAgeType: 'maths' | 'reading' | 'spelling' | null = null;
+      const currentType = getCurrentAssessmentType();
+      
+      if (currentType?.name === "YOUNG Maths A Assessment") academicAgeType = 'maths';
+      if (currentType?.name === "SPAR Reading Assessment A" || currentType?.name === "SPAR Reading Assessment B") academicAgeType = 'reading';
+      if (currentType?.name === "Schonell Spelling A") academicAgeType = 'spelling';
+      
+      if (!academicAgeType) {
+        throw new Error('Invalid academic age assessment type');
+      }
+      
+      // 4. Save academic age scores
+      const scoresToInsert: Array<{
+        session_id: string;
+        student_id: string;
+        test_type: 'maths' | 'reading' | 'spelling';
+        raw_score: number;
+        academic_age: string;
+        chronological_age: string;
+        age_difference: string;
+        is_deficit: boolean;
+      }> = [];
+      
+      Object.entries(academicAgeScores).forEach(([studentId, data]) => {
+        if (data.rawScore) {
+          scoresToInsert.push({
+            session_id: sessionId,
+            student_id: studentId,
+            test_type: academicAgeType as 'maths' | 'reading' | 'spelling',
+            raw_score: parseInt(data.rawScore, 10),
+            academic_age: data.academicAge,
+            chronological_age: data.chronologicalAge,
+            age_difference: data.ageDifference,
+            is_deficit: data.isDeficit
+          });
+        }
+      });
+      
+      // Insert academic age scores
+      if (scoresToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('student_academic_ages')
+          .insert(scoresToInsert);
+          
+        if (insertError) throw new Error(insertError.message);
+      }
+      
+      setSuccess('Assessment scores saved successfully!');
+      
+      // Reset form
+      setSelectedClass("");
+      setSelectedCategory("");
+      setSelectedType("");
+      setTestDate("");
+      setRemarks("");
+      setScores({});
+      setShowScoreForm(false);
+      
+      // Add small delay before reload to ensure UI feedback is shown
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+      
+    } catch (err) {
+      console.error('Error saving academic age assessment:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save assessment');
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   // Handle save scores for regular assessments
@@ -397,7 +484,36 @@ export function AssessmentRecordTab({
     try {
       const supabase = createClient();
       
-      // Prepare scores for insertion
+      // 1. First, create the assessment session
+      const { data: session, error: sessionError } = await supabase
+        .from('assessment_sessions')
+        .insert({
+          assessment_type_id: selectedType,
+          class_id: selectedClass,
+          tester_id: userId,
+          test_date: testDate,
+          remarks: remarks
+        })
+        .select('id')
+        .single();
+        
+      if (sessionError) {
+        console.error('Error creating assessment session:', sessionError);
+        setError(sessionError.message || 'Failed to create assessment session');
+        setSubmitting(false);
+        return;
+      }
+      
+      if (!session || !session.id) {
+        setError('Failed to create assessment session - no session ID returned');
+        setSubmitting(false);
+        return;
+      }
+      
+      // 2. Get the session ID
+      const sessionId = session.id;
+      
+      // 3. Prepare scores for insertion
       const scoresToInsert = [];
       const components = getCurrentComponents();
       
@@ -420,23 +536,13 @@ export function AssessmentRecordTab({
         }
       }
       
-      // Insert scores
+      // 4. Insert scores
       if (scoresToInsert.length > 0) {
         const { error: scoresError } = await supabase
           .from('student_assessment_scores')
           .insert(scoresToInsert);
           
         if (scoresError) throw new Error(scoresError.message);
-      }
-      
-      // Update session remarks if any
-      if (remarks) {
-        const { error: remarksError } = await supabase
-          .from('assessment_sessions')
-          .update({ remarks })
-          .eq('id', sessionId);
-          
-        if (remarksError) throw new Error(remarksError.message);
       }
       
       setSuccess('Assessment scores saved successfully!');
@@ -448,8 +554,12 @@ export function AssessmentRecordTab({
       setTestDate("");
       setRemarks("");
       setScores({});
-      setSessionId("");
       setShowScoreForm(false);
+      
+      // Add small delay before reload to ensure UI feedback is shown
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
       
     } catch (err) {
       console.error('Error saving assessment:', err);
@@ -688,36 +798,50 @@ export function AssessmentRecordTab({
         </Card>
       ) : (
         <>
-          {isAcademicAgeAssessment() && sessionId ? (
-            <AcademicAgeAssessment 
+          {isAcademicAgeAssessment() && showScoreForm ? (
+            <AcademicAgeAssessment
               students={classStudents}
               testType={getAcademicAgeType() as 'maths' | 'reading' | 'spelling'}
               testTypeName={getCurrentAssessmentType()?.name || ""}
               testDate={testDate}
-              sessionId={sessionId}
               onSaveComplete={handleAcademicAgeComplete}
               onCancel={handleBack}
             />
           ) : (
-            <Card className="bg-white overflow-hidden shadow-sm rounded-lg p-6">
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold">
-                      {getCurrentAssessmentType()?.name} - Raw Scores
-                    </h2>
-                    <div className="group relative">
-                      <Info size={16} className="text-gray-400 cursor-help" />
-                      <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs rounded p-2 w-64 z-50">
-                        Scores are standardized on a scale of 1-5 based on the ASB norm table. Each component has specific score ranges that map to standardized scores.
-                      </div>
-                    </div>
+            <Card className="bg-white overflow-hidden shadow-sm rounded-lg">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold">Record Assessment Scores</h2>
+                    <p className="text-gray-500 text-sm mt-1">
+                      Enter raw scores for each student and component
+                    </p>
                   </div>
-                  <p className="text-gray-500 text-sm mt-1">
-                    Enter the raw scores for each student. The system will automatically calculate standardized scores (1-5) based on the ASB norm table.
-                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                  >
+                    Back
+                  </Button>
                 </div>
                 
+                {/* Class and assessment details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Class</p>
+                    <p className="text-sm">{selectedClassObj?.class_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Assessment Type</p>
+                    <p className="text-sm">{getCurrentAssessmentType()?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Test Date</p>
+                    <p className="text-sm">{testDate}</p>
+                  </div>
+                </div>
+                
+                {/* Rest of the regular assessment form */}
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
