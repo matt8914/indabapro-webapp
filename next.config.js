@@ -8,6 +8,10 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  // Ensure static assets are properly served
+  poweredByHeader: false,
+  reactStrictMode: true,
+  swcMinify: true,
   // Add other configurations here as needed
 };
 
