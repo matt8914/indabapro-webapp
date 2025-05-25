@@ -97,7 +97,6 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       gender, 
       date_of_birth, 
       home_language,
-      location,
       school_id,
       occupational_therapy,
       speech_language_therapy,
@@ -138,7 +137,8 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
         classes (
           id,
           class_name,
-          teacher_id
+          teacher_id,
+          is_therapist_class
         )
       `)
       .eq('student_id', studentData.id);
@@ -385,13 +385,19 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
 
   // Get teacher name from actual data if available
   let teacherName = studentInfo.teacher;
+  let teacherLabel = "Teacher";
+  
   if (combinedStudentData && 
       combinedStudentData.class_enrollments && 
       combinedStudentData.class_enrollments.length > 0 && 
       combinedStudentData.class_enrollments[0].classes && 
       combinedStudentData.class_enrollments[0].classes.teacher) {
     const teacher = combinedStudentData.class_enrollments[0].classes.teacher;
+    const classData = combinedStudentData.class_enrollments[0].classes as any;
+    const isTherapistClass = classData.is_therapist_class;
+    
     teacherName = `${teacher.first_name} ${teacher.last_name}`;
+    teacherLabel = isTherapistClass ? "Private Therapist" : "Remedial Teacher";
   }
   
   // Get class name from actual data if available
@@ -626,7 +632,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 </div>
                 
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">Teacher</div>
+                  <div className="text-sm text-gray-500 mb-1">{teacherLabel}</div>
                   <div className="font-medium">{teacherName}</div>
                 </div>
                 

@@ -262,15 +262,11 @@ export default function CompleteProfile() {
             </div>
             
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>Are you a:</Label>
               <RadioGroup value={role} onValueChange={setRole} className="flex space-x-4">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="teacher" id="teacher" />
-                  <Label htmlFor="teacher" className="cursor-pointer">Teacher</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="admin" id="admin" />
-                  <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
+                  <Label htmlFor="teacher" className="cursor-pointer">Remedial Teacher</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="therapist" id="therapist" />

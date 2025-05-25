@@ -55,19 +55,7 @@ export const signUpAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-up", authError.message);
   }
   
-  // Check for user already registered case that didn't result in an error
-  // This happens when a user is registered but not confirmed
-  if (authData?.user && !authData.user.email_confirmed_at) {
-    console.log("User exists but email not confirmed");
-    // Send them to check email rather than creating a new account
-    return encodedRedirect(
-      "info",
-      "/sign-up",
-      "This email is already registered. Please check your email for the verification link we sent previously."
-    );
-  }
-  
-  // Normal sign-up flow - new user created
+  // Normal sign-up flow - new user created successfully
   return encodedRedirect(
     "success",
     "/sign-up",
@@ -221,7 +209,6 @@ export const createClassAction = async (formData: FormData) => {
   const className = formData.get("className")?.toString();
   const gradeLevel = formData.get("gradeLevel")?.toString();
   const academicYear = formData.get("year")?.toString();
-  const userRole = formData.get("userRole")?.toString() || "teacher"; // Get user role from form
   
   if (!className || !gradeLevel || !academicYear) {
     return encodedRedirect(
@@ -251,8 +238,10 @@ export const createClassAction = async (formData: FormData) => {
     .eq('id', user.id)
     .single();
   
-  // Only check for school_id if user is not a therapist
-  if (!userData?.school_id && userRole !== 'therapist') {
+  const isTherapist = userData?.role === 'therapist';
+  
+  // Check if user has a school_id (required for teachers and admins, but not therapists)
+  if (!isTherapist && !userData?.school_id) {
     return encodedRedirect(
       "error",
       "/protected/classes/new",
@@ -260,39 +249,37 @@ export const createClassAction = async (formData: FormData) => {
     );
   }
   
-  // For TypeScript type safety, create the base data object
-  const baseClassData = {
-    class_name: className,
-    grade_level: gradeLevel,
-    academic_year: academicYear,
-    teacher_id: user.id,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-  
-  // Handle different cases for therapist vs. teacher/admin users
+  // Create the class data based on user type
   let classInsertData;
   
-  if (userRole === 'therapist') {
-    // For therapists, set therapist_id and school_id=null
+  if (isTherapist) {
+    // For therapists, create a therapist class
     classInsertData = {
-      ...baseClassData,
-      school_id: null,
-      therapist_id: user.id,  // Set therapist_id to the user's ID
+      class_name: className,
+      grade_level: gradeLevel,
+      academic_year: academicYear,
+      school_id: null, // Therapists work across schools
+      teacher_id: user.id,
+      therapist_id: user.id,
       is_therapist_class: true,
-      therapist_name: userData ? `${userData.first_name} ${userData.last_name}` : ''
+      therapist_name: `${userData.first_name} ${userData.last_name}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
   } else {
-    // For teachers and admins, use the school_id
+    // For remedial teachers, assign them as the teacher
     classInsertData = {
-      ...baseClassData,
-      school_id: userData?.school_id,
-      therapist_id: null,  // Explicitly set to null for non-therapists
-      is_therapist_class: false
+      class_name: className,
+      grade_level: gradeLevel,
+      academic_year: academicYear,
+      school_id: userData.school_id,
+      teacher_id: user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
   }
   
-  // Create the class in the database with type assertion to handle new columns
+  // Create the class in the database
   const { error } = await supabase
     .from('classes')
     .insert(classInsertData as any);

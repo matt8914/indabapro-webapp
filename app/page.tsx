@@ -31,7 +31,7 @@ export default async function Home() {
           School Readiness & Scholastic Assessments
         </h1>
         <p className="text-lg text-gray-600">
-          A web-based platform enabling teachers and school administrators to efficiently log, track, and analyze student assessment data.
+          A web-based platform enabling remedial teachers and private therapists to efficiently log, track, and analyze student assessment data.
         </p>
         <div className="mt-10 flex flex-col md:flex-row items-center justify-center gap-4">
           <Button asChild className="bg-[#f6822d] hover:bg-orange-600" size="lg">

@@ -113,6 +113,26 @@ export const updateSession = async (request: NextRequest) => {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
+    // Admin route protection - check for super_admin role
+    if (request.nextUrl.pathname.startsWith("/protected/admin") && session) {
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userError || !userData || userData.role !== 'super_admin') {
+          // Redirect non-super-admins away from admin routes
+          return NextResponse.redirect(new URL("/protected", request.url));
+        }
+      } catch (error) {
+        console.error('Error checking user role for admin access:', error);
+        // On error, redirect to main dashboard for safety
+        return NextResponse.redirect(new URL("/protected", request.url));
+      }
+    }
+
     if ((request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/sign-in") && session) {
       return NextResponse.redirect(new URL("/protected", request.url));
     }

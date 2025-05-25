@@ -20,7 +20,8 @@ interface ClassData {
   academic_year: string;
   is_therapist_class?: boolean;
   therapist_name?: string;
-  "users!classes_teacher_id_fkey"?: {
+  teacher_id: string;
+  users?: {
     first_name: string;
     last_name: string;
   } | null;
@@ -55,7 +56,8 @@ export default async function ClassesPage() {
       academic_year,
       is_therapist_class,
       therapist_name,
-      users!classes_teacher_id_fkey(first_name, last_name)
+      teacher_id,
+      users:teacher_id(first_name, last_name)
     `)
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false });
@@ -82,10 +84,10 @@ export default async function ClassesPage() {
       
       // Determine teacher name based on class type
       let teacherName = 'Not Assigned';
-      if (classItem.is_therapist_class && classItem.therapist_name) {
+      if (classItem.is_therapist_class === true && classItem.therapist_name) {
         teacherName = classItem.therapist_name;
-      } else if (classItem["users!classes_teacher_id_fkey"]) {
-        teacherName = `${classItem["users!classes_teacher_id_fkey"].first_name} ${classItem["users!classes_teacher_id_fkey"].last_name}`;
+      } else if (classItem.users && classItem.users.first_name && classItem.users.last_name) {
+        teacherName = `${classItem.users.first_name} ${classItem.users.last_name}`;
       }
 
       formattedClasses.push({

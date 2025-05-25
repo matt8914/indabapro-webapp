@@ -43,9 +43,6 @@ function SignupForm() {
         <FormMessage message={message} />
         {message.success && (
           <div className="text-center">
-            <p className="text-gray-600 mb-4">
-              Please check your email for a verification link.
-            </p>
             <Link 
               className="text-[#f6822d] hover:text-orange-600 font-medium"
               href="/sign-in"
@@ -165,7 +162,7 @@ function SignupForm() {
         </div>
         
         <div className="space-y-2">
-          <Label className="text-gray-700">Role</Label>
+          <Label className="text-gray-700">Are you a:</Label>
           <RadioGroup 
             value={role} 
             onValueChange={setRole}
@@ -173,11 +170,7 @@ function SignupForm() {
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="teacher" id="teacher" />
-              <Label htmlFor="teacher" className="cursor-pointer">Teacher</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="admin" id="admin" />
-              <Label htmlFor="admin" className="cursor-pointer">Administrator</Label>
+              <Label htmlFor="teacher" className="cursor-pointer">Remedial Teacher</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="therapist" id="therapist" />

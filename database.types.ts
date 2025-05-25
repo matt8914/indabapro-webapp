@@ -55,7 +55,7 @@ export type Database = {
           first_name: string;
           last_name: string;
           email: string;
-          role: string;
+          role: 'teacher' | 'admin' | 'therapist' | 'super_admin';
           school_id?: string;
         };
       };

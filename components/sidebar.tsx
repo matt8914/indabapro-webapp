@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, LogOut, Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { 
   DropdownMenu,
@@ -271,6 +271,12 @@ export function Sidebar({ currentPath }: SidebarProps) {
       icon: <BarChart2 className="h-5 w-5" />,
       href: "/protected/assessments",
       current: currentPath.includes("/protected/assessments"),
+    },
+    {
+      name: "Information",
+      icon: <Info className="h-5 w-5" />,
+      href: "/protected/information",
+      current: currentPath.includes("/protected/information"),
     },
   ];
 
