@@ -12,6 +12,7 @@ interface StudentDetailsForPdf {
   fullName: string;
   className?: string;
   teacher?: string;
+  teacherLabel?: string;
   dateOfBirth?: string | null;
   gender?: string;
   homeLanguage?: string;

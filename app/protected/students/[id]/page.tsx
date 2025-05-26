@@ -561,6 +561,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                     fullName: studentName,
                     className: className,
                     teacher: teacherName,
+                    teacherLabel: teacherLabel,
                     dateOfBirth: combinedStudentData?.date_of_birth || studentInfo.dateOfBirth,
                     gender: combinedStudentData?.gender || studentInfo.gender,
                     homeLanguage: combinedStudentData?.home_language || studentInfo.homeLanguage,

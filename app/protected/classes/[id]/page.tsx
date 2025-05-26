@@ -123,7 +123,7 @@ export default async function ClassDetailsPage({
       teacher_id,
       is_therapist_class,
       therapist_name,
-      users!classes_teacher_id_fkey(first_name, last_name)
+      users:teacher_id(first_name, last_name)
     `)
     .eq('id', id)
     .single();
@@ -300,9 +300,9 @@ export default async function ClassDetailsPage({
   if (isTherapistClass && classData.therapist_name) {
     // For therapist classes, use the therapist_name field directly
     displayName = classData.therapist_name;
-  } else if (classData["users!classes_teacher_id_fkey"]) {
+  } else if (classData.users && classData.users.first_name && classData.users.last_name) {
     // For teacher classes, use the teacher relationship
-    displayName = `${classData["users!classes_teacher_id_fkey"].first_name} ${classData["users!classes_teacher_id_fkey"].last_name}`;
+    displayName = `${classData.users.first_name} ${classData.users.last_name}`;
   }
 
   return (

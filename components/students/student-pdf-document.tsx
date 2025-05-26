@@ -8,6 +8,7 @@ interface StudentDetailsForPdf {
   fullName: string;
   className?: string;
   teacher?: string;
+  teacherLabel?: string;
   dateOfBirth?: string | null;
   gender?: string;
   homeLanguage?: string;
@@ -208,7 +209,7 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
           <View style={styles.gridItem}><Text style={styles.label}>Gender</Text><Text style={styles.value}>{studentData.gender || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>Home Language</Text><Text style={styles.value}>{studentData.homeLanguage || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>Class</Text><Text style={styles.value}>{studentData.className || 'N/A'}</Text></View>
-          <View style={styles.gridItem}><Text style={styles.label}>Teacher</Text><Text style={styles.value}>{studentData.teacher || 'N/A'}</Text></View>
+          <View style={styles.gridItem}><Text style={styles.label}>{studentData.teacherLabel || 'Teacher'}</Text><Text style={styles.value}>{studentData.teacher || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>School</Text><Text style={styles.value}>{studentData.school || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>Place</Text><Text style={styles.value}>{studentData.place || 'N/A'}</Text></View>
         </View>

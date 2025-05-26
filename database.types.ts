@@ -9,6 +9,8 @@ export type Database = {
           academic_year: string;
           school_id: string;
           teacher_id: string;
+          is_therapist_class?: boolean;
+          therapist_name?: string;
           users?: {
             first_name: string;
             last_name: string;
