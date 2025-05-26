@@ -54,12 +54,12 @@ export function ASBProfileChart({ studentName, scores }: ASBProfileChartProps) {
   // Ensure the data is ordered correctly for the chart display
   const orderedComponents = [
     "Visual Perception",
-    "Numerical",
     "Spatial",
-    "Gestalt",
-    "Memory",
-    "Co-ordination",
     "Reasoning",
+    "Numerical",
+    "Gestalt",
+    "Co-ordination",
+    "Memory",
     "Verbal Comprehension"
   ];
 
@@ -80,8 +80,12 @@ export function ASBProfileChart({ studentName, scores }: ASBProfileChartProps) {
   return (
     <Card className="w-full" id="asb-profile-chart">
       <CardHeader className="pb-2">
-        <CardTitle>{studentName}</CardTitle>
-        <CardDescription>Standardized scores comparison</CardDescription>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>{studentName}</CardTitle>
+            <CardDescription>Standardized scores comparison</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {hasData ? (

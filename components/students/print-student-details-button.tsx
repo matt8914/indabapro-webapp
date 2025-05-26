@@ -38,6 +38,44 @@ interface PrintStudentDetailsButtonProps {
   asbChartElementId: string; 
 }
 
+// Simple direct capture function that matches the working ASB chart logic
+async function captureASBChart(chartElementId: string): Promise<string | null> {
+  console.log("[DEBUG] Starting chart capture for ID:", chartElementId);
+  
+  const chartElement = document.getElementById(chartElementId);
+  if (!chartElement) {
+    console.warn(`[DEBUG] ASB Chart element with ID '${chartElementId}' not found.`);
+    return null;
+  }
+
+  console.log("[DEBUG] Found chart element:", chartElement);
+  console.log("[DEBUG] Chart element dimensions:", {
+    width: chartElement.offsetWidth,
+    height: chartElement.offsetHeight,
+    clientWidth: chartElement.clientWidth,
+    clientHeight: chartElement.clientHeight
+  });
+
+  try {
+    // Use the exact same capture logic as the working ASB chart print button
+    const canvas = await html2canvas(chartElement, {
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      scale: 2,
+      width: chartElement.offsetWidth,
+      height: chartElement.offsetHeight,
+    });
+
+    const chartImage = canvas.toDataURL("image/png");
+    console.log("[DEBUG] Successfully captured chart image, length:", chartImage.length);
+    
+    return chartImage;
+  } catch (error) {
+    console.error("[DEBUG] Error capturing chart:", error);
+    return null;
+  }
+}
+
 export function PrintStudentDetailsButton({ studentData, asbChartElementId }: PrintStudentDetailsButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   
@@ -45,27 +83,8 @@ export function PrintStudentDetailsButton({ studentData, asbChartElementId }: Pr
     try {
       setIsGenerating(true);
 
-      let asbChartImage: string | null = null;
-      const chartElement = document.getElementById(asbChartElementId);
-
-      if (chartElement) {
-        // Temporarily make chart visible if it's in an inactive tab to capture it
-        // This might need adjustment based on how tabs hide content (e.g., display: none vs visibility: hidden)
-        // For simplicity, we assume it's capturable or the tab needs to be active.
-        // A more robust solution might involve ensuring the tab is active or temporarily altering styles.
-
-        // Add a small delay to ensure chart is rendered if tab was just switched
-        await new Promise(resolve => setTimeout(resolve, 100)); 
-
-        const canvas = await html2canvas(chartElement, {
-          scale: 2, // Increase scale for better resolution
-          useCORS: true, // If chart uses external images/fonts
-          backgroundColor: '#ffffff', // Ensure background is white for PDF
-        });
-        asbChartImage = canvas.toDataURL('image/png');
-      } else {
-        console.warn(`ASB Chart element with ID '${asbChartElementId}' not found.`);
-      }
+      // Use the clone-and-capture method to get the chart image
+      const asbChartImage = await captureASBChart(asbChartElementId);
       
       await openPdfInNewTab(
         <StudentPdfDocument 
@@ -78,7 +97,7 @@ export function PrintStudentDetailsButton({ studentData, asbChartElementId }: Pr
     } catch (error) {
       console.error('Error generating student PDF:', error);
       setIsGenerating(false);
-      alert('Could not generate PDF. Please ensure the ASB Test Profile tab has been viewed at least once if the chart is missing.');
+      alert('Could not generate PDF. Please try again.');
     }
   };
 

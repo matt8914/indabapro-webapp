@@ -237,17 +237,6 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
             {studentData.readingAge?.lastAssessmentDate && <Text style={styles.assessmentDate}>Last Assessed: {new Date(studentData.readingAge.lastAssessmentDate).toLocaleDateString()}</Text>}
           </View>
         </View>
-        
-        {/* ASB Test Profile Section */}
-        <Text style={styles.sectionTitle}>ASB Test Profile</Text>
-        {studentData.asbTestDate && 
-            <Text style={styles.asbTestDateText}>Assessment Date: {new Date(studentData.asbTestDate).toLocaleDateString()}</Text>
-        }
-        {asbProfileChartImage ? (
-          <Image style={styles.asbChartImage} src={asbProfileChartImage} />
-        ) : (
-          <View style={styles.gridItemFull}><Text style={styles.value}>ASB Profile Chart not available.</Text></View>
-        )}
 
         {/* Special Needs & Health Information (Optional - keep it brief) */}
         <Text style={styles.sectionTitle}>Additional Information</Text>
@@ -260,6 +249,17 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
             <View style={styles.gridItem}><Text style={styles.label}>Speech (Concern)</Text><Text style={styles.value}>{studentData.speech || 'N/A'}</Text></View>
             <View style={styles.gridItem}><Text style={styles.label}>Hearing (Concern)</Text><Text style={styles.value}>{studentData.hearing || 'N/A'}</Text></View>
         </View>
+        
+        {/* ASB Test Profile Section */}
+        <Text style={styles.sectionTitle}>ASB Test Profile</Text>
+        {studentData.asbTestDate && 
+            <Text style={styles.asbTestDateText}>Assessment Date: {new Date(studentData.asbTestDate).toLocaleDateString()}</Text>
+        }
+        {asbProfileChartImage ? (
+          <Image style={styles.asbChartImage} src={asbProfileChartImage} />
+        ) : (
+          <View style={styles.gridItemFull}><Text style={styles.value}>ASB Profile Chart not available.</Text></View>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>

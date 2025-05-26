@@ -425,9 +425,9 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
 
   console.log("[StudentPage] Props for ASBProfileChart:", { studentName, asbScores });
 
-  // Get the active tab from search params or default to "info"
-  const activeTab = typeof resolvedSearch.tab === 'string' && 
-    (resolvedSearch.tab === 'asb' || resolvedSearch.tab === 'progress') 
+  // Determine which tab to show based on URL params
+  const activeTab = 
+    (resolvedSearch.tab === 'progress') 
     ? resolvedSearch.tab : 'info';
 
   // Fetch student's academic age assessments for progress overview
@@ -535,18 +535,12 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       </div>
       
       <Tabs defaultValue={activeTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3 bg-gray-100 rounded-lg p-1">
+        <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 rounded-lg p-1">
           <TabsTrigger 
             value="info" 
             className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md"
           >
             Student Information
-          </TabsTrigger>
-          <TabsTrigger 
-            value="asb" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-none rounded-md"
-          >
-            ASB Test Profile
           </TabsTrigger>
           <TabsTrigger 
             value="progress" 
@@ -972,32 +966,28 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   })()}
                 </div>
               </div>
-            </div>
-          </div>
-        </TabsContent>
-        
-        {/* ASB Test Profile Tab */}
-        <TabsContent value="asb" className="mt-6">
-          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-medium">ASB Test Profile</h2>
-              {asbTestDate && (
-                <div className="text-sm text-gray-500">
-                  Assessment Date: {new Date(asbTestDate).toLocaleDateString()}
+
+              {/* ASB Test Profile Section */}
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-medium">ASB Test Profile</h3>
+                  {asbTestDate && (
+                    <div className="text-sm text-gray-500">
+                      Assessment Date: {new Date(asbTestDate).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="p-6">
-              {asbScores && asbScores.length > 0 ? (
-                <ASBProfileChart 
-                  studentName={studentName}
-                  scores={asbScores}
-                />
-              ) : (
-                <div className="w-full h-64 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
-                  <p className="text-center text-gray-500">No ASB test data available for this student</p>
-                </div>
-              )}
+                {asbScores && asbScores.length > 0 ? (
+                  <ASBProfileChart 
+                    studentName={studentName}
+                    scores={asbScores}
+                  />
+                ) : (
+                  <div className="w-full h-64 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
+                    <p className="text-center text-gray-500">No ASB test data available for this student</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </TabsContent>
