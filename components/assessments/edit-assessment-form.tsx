@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { convertToStandardizedScore } from "@/utils/assessment-utils";
+import { convertToStandardizedScore, calculateCognitiveReadinessFromRawScores } from "@/utils/assessment-utils";
 import { createClient } from "@/utils/supabase/client";
 import { 
   convertToMathsAge,
@@ -197,6 +197,37 @@ export function EditAssessmentForm({
   const getCurrentComponents = () => {
     const assessmentType = getCurrentAssessmentType();
     return assessmentType ? assessmentType.components : [];
+  };
+
+  // Helper function to calculate cognitive readiness score for a student
+  const getCognitiveReadinessScore = (studentId: string): number => {
+    const components = getCurrentComponents();
+    
+    // Find the component IDs for Reasoning, Numerical, and Gestalt
+    const reasoningComponent = components.find(c => c.name === "Reasoning");
+    const numericalComponent = components.find(c => c.name === "Numerical");
+    const gestaltComponent = components.find(c => c.name === "Gestalt");
+    
+    if (!reasoningComponent || !numericalComponent || !gestaltComponent) {
+      return 0; // Return 0 if any required component is missing
+    }
+    
+    // Get raw scores for these components
+    const reasoningRaw = scores[studentId]?.[reasoningComponent.id];
+    const numericalRaw = scores[studentId]?.[numericalComponent.id];
+    const gestaltRaw = scores[studentId]?.[gestaltComponent.id];
+    
+    // Check if all scores are available
+    if (!reasoningRaw || !numericalRaw || !gestaltRaw) {
+      return 0; // Return 0 if any score is missing
+    }
+    
+    // Convert to numbers and calculate
+    return calculateCognitiveReadinessFromRawScores(
+      parseInt(reasoningRaw, 10),
+      parseInt(numericalRaw, 10),
+      parseInt(gestaltRaw, 10)
+    );
   };
 
   // Order components
@@ -757,6 +788,10 @@ export function EditAssessmentForm({
                           </div>
                         </th>
                       ))}
+                      <th className="py-2 px-4 text-center text-sm font-medium text-red-500">
+                        Level of Cognitive<br />Readiness in<br />Language of Assessment
+                        <div className="text-xs text-red-400">(Calculated)</div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -784,6 +819,15 @@ export function EditAssessmentForm({
                             />
                           </td>
                         ))}
+                        <td className="py-3 px-4 text-center">
+                          <div className="w-20 h-8 flex items-center justify-center bg-gray-50 rounded-md border">
+                            <span className={`text-sm font-medium ${
+                              getCognitiveReadinessScore(student.id) > 0 ? 'text-red-600' : 'text-gray-400'
+                            }`}>
+                              {getCognitiveReadinessScore(student.id) > 0 ? getCognitiveReadinessScore(student.id) : '-'}
+                            </span>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

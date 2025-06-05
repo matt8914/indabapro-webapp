@@ -33,6 +33,7 @@ interface StudentDetailsForPdf {
 interface StudentPdfDocumentProps {
   studentData: StudentDetailsForPdf;
   asbProfileChartImage: string | null; // Base64 image string
+  cognitiveReadinessScore?: string | null; // Cognitive readiness score for PDF text
 }
 
 const styles = StyleSheet.create({
@@ -195,7 +196,7 @@ const renderAgeWithChip = (ageData?: { academicAge: string | null; difference: s
   );
 };
 
-const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, asbProfileChartImage }) => {
+const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, asbProfileChartImage, cognitiveReadinessScore }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -257,7 +258,28 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
             <Text style={styles.asbTestDateText}>Assessment Date: {new Date(studentData.asbTestDate).toLocaleDateString()}</Text>
         }
         {asbProfileChartImage ? (
-          <Image style={styles.asbChartImage} src={asbProfileChartImage} />
+          <>
+            <Image style={styles.asbChartImage} src={asbProfileChartImage} />
+            {/* Add cognitive readiness score as text below the chart */}
+            {cognitiveReadinessScore && (
+              <View style={{ marginTop: 15, padding: 10, backgroundColor: '#F9FAFB', borderRadius: 5, alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, color: '#4B5563', marginBottom: 5, textAlign: 'center' }}>
+                  Level of Cognitive Readiness in Language of Assessment
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151', marginRight: 5 }}>
+                    {cognitiveReadinessScore}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#6B7280' }}>
+                    (out of 5)
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 9, color: '#6B7280', marginTop: 3, textAlign: 'center' }}>
+                  Based on Reasoning, Numerical, and Gestalt scores
+                </Text>
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.gridItemFull}><Text style={styles.value}>ASB Profile Chart not available.</Text></View>
         )}

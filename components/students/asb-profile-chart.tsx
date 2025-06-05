@@ -27,10 +27,11 @@ interface ASBScore {
 interface ASBProfileChartProps {
   studentName: string;
   scores: ASBScore[];
+  cognitiveReadinessScore?: number;
 }
 
-export function ASBProfileChart({ studentName, scores }: ASBProfileChartProps) {
-  console.log("[ASBProfileChart] Received props:", { studentName, scores });
+export function ASBProfileChart({ studentName, scores, cognitiveReadinessScore }: ASBProfileChartProps) {
+  console.log("[ASBProfileChart] Received props:", { studentName, scores, cognitiveReadinessScore });
 
   // Check if there's actual assessment data
   const hasData = scores && scores.length > 0 && scores.some(score => score.standardized_score > 0);
@@ -156,6 +157,36 @@ export function ASBProfileChart({ studentName, scores }: ASBProfileChartProps) {
                 <span>Expected Level (3)</span>
               </div>
             </div>
+            
+            {/* Cognitive Readiness Score Summary */}
+            {cognitiveReadinessScore && cognitiveReadinessScore > 0 && (
+              <div className="mt-6 pt-4 border-t border-gray-100" data-testid="cognitive-readiness-section">
+                <div className="text-center">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Level of Cognitive Readiness in Language of Assessment
+                  </h4>
+                  <div className="inline-flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
+                    <span 
+                      className="text-xs text-gray-500"
+                      data-testid="cognitive-readiness-score"
+                      data-score={cognitiveReadinessScore}
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: '#374151',
+                        lineHeight: '28px'
+                      }}
+                    >
+                      {cognitiveReadinessScore}
+                    </span>
+                    <span className="text-xs text-gray-500">(out of 5)</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Based on Reasoning, Numerical, and Gestalt scores
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center p-8 h-[320px] sm:h-80 bg-gray-50 rounded-md">

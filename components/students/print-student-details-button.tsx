@@ -57,7 +57,59 @@ async function captureASBChart(chartElementId: string): Promise<string | null> {
     clientHeight: chartElement.clientHeight
   });
 
+  // Wait for React to complete all rendering cycles
+  console.log("[DEBUG] Waiting for React rendering to complete...");
+  await new Promise(resolve => {
+    // Use multiple RAF calls to ensure all updates are complete
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve(void 0);
+        });
+      });
+    });
+  });
+
+  // Additional short delay to ensure everything is settled
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Log the cognitive readiness score element to check if it exists and has content
+  const cognitiveReadinessSection = chartElement.querySelector('[data-testid="cognitive-readiness-section"]');
+  console.log("[DEBUG] Cognitive readiness section:", cognitiveReadinessSection);
+  
+  const cognitiveReadinessElement = chartElement.querySelector('[data-testid="cognitive-readiness-score"]');
+  console.log("[DEBUG] Cognitive readiness element:", cognitiveReadinessElement);
+  
+  if (cognitiveReadinessElement) {
+    console.log("[DEBUG] Cognitive readiness element content:", cognitiveReadinessElement.textContent);
+    console.log("[DEBUG] Cognitive readiness element innerHTML:", cognitiveReadinessElement.innerHTML);
+    console.log("[DEBUG] Cognitive readiness element data-score:", cognitiveReadinessElement.getAttribute('data-score'));
+    console.log("[DEBUG] Cognitive readiness element styles:", window.getComputedStyle(cognitiveReadinessElement));
+  } else {
+    console.warn("[DEBUG] Cognitive readiness element not found! Looking for all elements with data-testid...");
+    const allTestIdElements = chartElement.querySelectorAll('[data-testid]');
+    console.log("[DEBUG] All data-testid elements:", Array.from(allTestIdElements).map(el => ({
+      element: el,
+      testId: el.getAttribute('data-testid'),
+      content: el.textContent
+    })));
+    
+    console.warn("[DEBUG] Also looking for all text elements...");
+    const allTextElements = chartElement.querySelectorAll('span, div, p');
+    console.log("[DEBUG] All text elements in chart:", Array.from(allTextElements).map(el => ({
+      element: el,
+      content: el.textContent,
+      classes: el.className
+    })));
+  }
+
+  // Log all child elements to see the full structure
+  console.log("[DEBUG] Chart element full HTML structure:");
+  console.log(chartElement.innerHTML);
+
   try {
+    console.log("[DEBUG] Starting html2canvas capture...");
+    
     // Use the exact same capture logic as the working ASB chart print button
     const canvas = await html2canvas(chartElement, {
       backgroundColor: "#ffffff",
@@ -65,10 +117,31 @@ async function captureASBChart(chartElementId: string): Promise<string | null> {
       scale: 2,
       width: chartElement.offsetWidth,
       height: chartElement.offsetHeight,
+      logging: true, // Enable html2canvas logging
+      onclone: (clonedDoc) => {
+        console.log("[DEBUG] html2canvas cloned document:", clonedDoc);
+        const clonedElement = clonedDoc.getElementById(chartElementId);
+        if (clonedElement) {
+          console.log("[DEBUG] Cloned element found");
+          
+          // Remove the cognitive readiness section from the cloned document for PDF capture
+          const clonedCognitiveSection = clonedElement.querySelector('[data-testid="cognitive-readiness-section"]');
+          if (clonedCognitiveSection) {
+            console.log("[DEBUG] Removing cognitive readiness section from PDF capture");
+            clonedCognitiveSection.remove();
+          }
+        }
+      }
     });
 
     const chartImage = canvas.toDataURL("image/png");
     console.log("[DEBUG] Successfully captured chart image, length:", chartImage.length);
+    
+    // Log some details about the captured image
+    console.log("[DEBUG] Canvas dimensions:", {
+      width: canvas.width,
+      height: canvas.height
+    });
     
     return chartImage;
   } catch (error) {
@@ -82,21 +155,57 @@ export function PrintStudentDetailsButton({ studentData, asbChartElementId }: Pr
   
   const handlePrintStudentDetails = async () => {
     try {
+      console.log("[PDF_GEN] Starting PDF generation process...");
       setIsGenerating(true);
 
+      console.log("[PDF_GEN] Student data:", studentData);
+      console.log("[PDF_GEN] ASB chart element ID:", asbChartElementId);
+
+      // Check if the ASB chart element exists before capture
+      const chartElement = document.getElementById(asbChartElementId);
+      console.log("[PDF_GEN] Chart element found:", !!chartElement);
+      
+      if (chartElement) {
+        // Check if cognitive readiness is visible in the DOM
+        const cognitiveSection = chartElement.querySelector('[data-testid="cognitive-readiness-section"]');
+        const cognitiveScore = chartElement.querySelector('[data-testid="cognitive-readiness-score"]');
+        console.log("[PDF_GEN] Cognitive readiness section visible:", !!cognitiveSection);
+        console.log("[PDF_GEN] Cognitive readiness score element visible:", !!cognitiveScore);
+        if (cognitiveScore) {
+          console.log("[PDF_GEN] Cognitive readiness score value:", cognitiveScore.textContent);
+          console.log("[PDF_GEN] Cognitive readiness score data-score:", cognitiveScore.getAttribute('data-score'));
+        }
+      }
+
       // Use the clone-and-capture method to get the chart image
+      console.log("[PDF_GEN] Starting chart capture...");
       const asbChartImage = await captureASBChart(asbChartElementId);
+      console.log("[PDF_GEN] Chart capture completed, image available:", !!asbChartImage);
+      
+      console.log("[PDF_GEN] Generating PDF document...");
+      
+      // Extract cognitive readiness score from the DOM element if available
+      let cognitiveReadinessScore = null;
+      if (chartElement) {
+        const cognitiveScoreElement = chartElement.querySelector('[data-testid="cognitive-readiness-score"]');
+        if (cognitiveScoreElement) {
+          cognitiveReadinessScore = cognitiveScoreElement.getAttribute('data-score') || cognitiveScoreElement.textContent;
+        }
+      }
+      console.log("[PDF_GEN] Cognitive readiness score for PDF:", cognitiveReadinessScore);
       
       await openPdfInNewTab(
         <StudentPdfDocument 
           studentData={studentData} 
           asbProfileChartImage={asbChartImage}
+          cognitiveReadinessScore={cognitiveReadinessScore}
         />
       );
       
+      console.log("[PDF_GEN] PDF generation completed successfully");
       setIsGenerating(false);
     } catch (error) {
-      console.error('Error generating student PDF:', error);
+      console.error('[PDF_GEN] Error generating student PDF:', error);
       setIsGenerating(false);
       alert('Could not generate PDF. Please try again.');
     }

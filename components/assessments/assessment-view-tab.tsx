@@ -9,6 +9,7 @@ import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, 
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { convertTenthsToYearsMonths } from "@/utils/academic-age-utils";
+import { calculateCognitiveReadinessScore } from "@/utils/assessment-utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -280,6 +281,26 @@ export function AssessmentViewTab({
     });
   };
 
+  // Function to check if this is an ASB assessment
+  const isASBAssessment = (assessmentTypeName: string): boolean => {
+    return assessmentTypeName === "Aptitude Tests for School Beginners (ASB)";
+  };
+
+  // Function to calculate cognitive readiness score from student scores
+  const getCognitiveReadinessScore = (scores: Record<string, StudentScore>): number | null => {
+    const reasoningScore = Object.values(scores).find(score => score.componentName === "Reasoning")?.standardizedScore;
+    const numericalScore = Object.values(scores).find(score => score.componentName === "Numerical")?.standardizedScore;
+    const gestaltScore = Object.values(scores).find(score => score.componentName === "Gestalt")?.standardizedScore;
+
+    if (reasoningScore !== null && reasoningScore !== undefined && 
+        numericalScore !== null && numericalScore !== undefined && 
+        gestaltScore !== null && gestaltScore !== undefined) {
+      return calculateCognitiveReadinessScore(reasoningScore, numericalScore, gestaltScore);
+    }
+    
+    return null;
+  };
+
   // Function to handle assessment session deletion
   const handleDeleteClick = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent toggling session expansion
@@ -546,6 +567,12 @@ export function AssessmentViewTab({
                                         {score.componentName}
                                       </th>
                                     ))}
+                                  {/* Add Cognitive Readiness header for ASB assessments */}
+                                  {isASBAssessment(session.assessmentType) && (
+                                    <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                                      Level of Cognitive Readiness in Language of Assessment
+                                    </th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -571,6 +598,16 @@ export function AssessmentViewTab({
                                         </div>
                                       </td>
                                     ))}
+                                    {/* Add Cognitive Readiness score for ASB assessments */}
+                                    {isASBAssessment(session.assessmentType) && (
+                                      <td className="py-3 px-4 text-center">
+                                        <div className="flex flex-col items-center">
+                                          <span className="text-sm font-medium">
+                                            {getCognitiveReadinessScore(student.scores) || '-'}
+                                          </span>
+                                        </div>
+                                      </td>
+                                    )}
                                   </tr>
                                 ))}
                               </tbody>

@@ -13,6 +13,7 @@ import {
   convertToSpellingAge, 
   convertToMathsAge 
 } from "@/utils/academic-age-utils";
+import { calculateCognitiveReadinessScore } from "@/utils/assessment-utils";
 import { PrintStudentDetailsButton } from "@/components/students/print-student-details-button";
 
 // Define types for our data
@@ -424,7 +425,24 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     ];
   }
 
-  console.log("[StudentPage] Props for ASBProfileChart:", { studentName, asbScores });
+  // Calculate Level of Cognitive Readiness in Language of Assessment
+  const getCognitiveReadinessScore = (scores: ASBScore[]): number => {
+    // Find the required component scores
+    const reasoningScore = scores.find(s => s.component_name === "Reasoning")?.standardized_score || 0;
+    const numericalScore = scores.find(s => s.component_name === "Numerical")?.standardized_score || 0;
+    const gestaltScore = scores.find(s => s.component_name === "Gestalt")?.standardized_score || 0;
+    
+    // Calculate cognitive readiness if all required scores are available
+    if (reasoningScore > 0 && numericalScore > 0 && gestaltScore > 0) {
+      return calculateCognitiveReadinessScore(reasoningScore, numericalScore, gestaltScore);
+    }
+    
+    return 0; // Return 0 if any required score is missing
+  };
+
+  const cognitiveReadinessScore = getCognitiveReadinessScore(asbScores);
+
+  console.log("[StudentPage] Props for ASBProfileChart:", { studentName, asbScores, cognitiveReadinessScore });
 
   // Determine which tab to show based on URL params
   const activeTab = 
@@ -991,6 +1009,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   <ASBProfileChart 
                     studentName={studentName}
                     scores={asbScores}
+                    cognitiveReadinessScore={cognitiveReadinessScore}
                   />
                 ) : (
                   <div className="w-full h-64 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">

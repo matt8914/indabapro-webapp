@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Info } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { convertToStandardizedScore } from "@/utils/assessment-utils";
+import { convertToStandardizedScore, calculateCognitiveReadinessFromRawScores } from "@/utils/assessment-utils";
 import { AcademicAgeAssessment } from "./academic-age-assessment";
 
 interface Student {
@@ -271,6 +271,37 @@ export function AssessmentRecordTab({
       });
     });
     setScores(initialScores);
+  };
+
+  // Helper function to calculate cognitive readiness score for a student
+  const getCognitiveReadinessScore = (studentId: string): number => {
+    const components = getCurrentComponents();
+    
+    // Find the component IDs for Reasoning, Numerical, and Gestalt
+    const reasoningComponent = components.find(c => c.name === "Reasoning");
+    const numericalComponent = components.find(c => c.name === "Numerical");
+    const gestaltComponent = components.find(c => c.name === "Gestalt");
+    
+    if (!reasoningComponent || !numericalComponent || !gestaltComponent) {
+      return 0; // Return 0 if any required component is missing
+    }
+    
+    // Get raw scores for these components
+    const reasoningRaw = scores[studentId]?.[reasoningComponent.id];
+    const numericalRaw = scores[studentId]?.[numericalComponent.id];
+    const gestaltRaw = scores[studentId]?.[gestaltComponent.id];
+    
+    // Check if all scores are available
+    if (!reasoningRaw || !numericalRaw || !gestaltRaw) {
+      return 0; // Return 0 if any score is missing
+    }
+    
+    // Convert to numbers and calculate
+    return calculateCognitiveReadinessFromRawScores(
+      parseInt(reasoningRaw, 10),
+      parseInt(numericalRaw, 10),
+      parseInt(gestaltRaw, 10)
+    );
   };
   
   // Handle score changes
@@ -862,6 +893,10 @@ export function AssessmentRecordTab({
                             </div>
                           </th>
                         ))}
+                        <th className="py-4 px-2 text-center font-medium text-red-500">
+                          <div className="text-sm">Level of Cognitive<br />Readiness in<br />Language of Assessment</div>
+                          <div className="text-xs text-red-400">(Calculated)</div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -884,11 +919,20 @@ export function AssessmentRecordTab({
                                 />
                               </td>
                             ))}
+                            <td className="py-2 px-2 text-center">
+                              <div className="w-full h-10 flex items-center justify-center bg-gray-50 rounded-md border">
+                                <span className={`text-sm font-medium ${
+                                  getCognitiveReadinessScore(student.id) > 0 ? 'text-red-600' : 'text-gray-400'
+                                }`}>
+                                  {getCognitiveReadinessScore(student.id) > 0 ? getCognitiveReadinessScore(student.id) : '-'}
+                                </span>
+                              </div>
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={getCurrentComponents().length + 1} className="py-4 px-2 text-center text-gray-500">
+                          <td colSpan={getCurrentComponents().length + 2} className="py-4 px-2 text-center text-gray-500">
                             No students enrolled in this class.
                           </td>
                         </tr>

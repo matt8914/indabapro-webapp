@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { calculateCognitiveReadinessScore } from "@/utils/assessment-utils";
 
 // Updated typing to match Next.js 15 expectations
 // type PageProps = {
@@ -33,73 +34,43 @@ export default async function AssessmentDetailsPage({ params }: { params: Promis
     className: "Grade 3A"
   };
 
-  // Mock student results data
+  // Mock student results data with calculated cognitive readiness
+  const createStudentResult = (
+    id: string, 
+    name: string, 
+    perception: number,
+    spatial: number,
+    reasoning: number,
+    numerical: number,
+    gestalt: number,
+    coordination: number,
+    memory: number,
+    verbalComprehension: number
+  ) => {
+    // Calculate cognitive readiness score from reasoning, numerical, and gestalt
+    const cognitive = calculateCognitiveReadinessScore(reasoning, numerical, gestalt);
+    
+    return {
+      id,
+      name,
+      cognitive,
+      perception,
+      spatial,
+      reasoning,
+      numerical,
+      gestalt,
+      coordination,
+      memory,
+      verbalComprehension
+    };
+  };
+
   const studentResults = [
-    { 
-      id: "S20250001", 
-      name: "Emily Johnson", 
-      cognitive: 3,
-      perception: 5,
-      spatial: 3,
-      reasoning: 3,
-      numerical: 3,
-      gestalt: 3,
-      coordination: 2,
-      memory: 1,
-      verbalComprehension: 2
-    },
-    { 
-      id: "S20250002", 
-      name: "Michael Smith", 
-      cognitive: 2,
-      perception: 1,
-      spatial: 3,
-      reasoning: 2,
-      numerical: 2,
-      gestalt: 2,
-      coordination: 2,
-      memory: 2,
-      verbalComprehension: 2
-    },
-    { 
-      id: "S20250003", 
-      name: "Sophia Williams", 
-      cognitive: 3,
-      perception: 5,
-      spatial: 5,
-      reasoning: 1,
-      numerical: 5,
-      gestalt: 4,
-      coordination: 4,
-      memory: 5,
-      verbalComprehension: 3
-    },
-    { 
-      id: "S20250004", 
-      name: "Daniel Brown", 
-      cognitive: 1,
-      perception: 1,
-      spatial: 2,
-      reasoning: 2,
-      numerical: 2,
-      gestalt: 1,
-      coordination: 3,
-      memory: 3,
-      verbalComprehension: 4
-    },
-    { 
-      id: "S20250005", 
-      name: "Olivia Miller", 
-      cognitive: 3,
-      perception: 1,
-      spatial: 5,
-      reasoning: 1,
-      numerical: 5,
-      gestalt: 4,
-      coordination: 4,
-      memory: 2,
-      verbalComprehension: 3
-    }
+    createStudentResult("S20250001", "Emily Johnson", 5, 3, 3, 3, 3, 2, 1, 2),
+    createStudentResult("S20250002", "Michael Smith", 1, 3, 2, 2, 2, 2, 2, 2),
+    createStudentResult("S20250003", "Sophia Williams", 5, 5, 1, 5, 4, 4, 5, 3),
+    createStudentResult("S20250004", "Daniel Brown", 1, 2, 2, 2, 1, 3, 3, 4),
+    createStudentResult("S20250005", "Olivia Miller", 1, 5, 1, 5, 4, 4, 2, 3)
   ];
 
   return (
@@ -120,9 +91,6 @@ export default async function AssessmentDetailsPage({ params }: { params: Promis
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Student</th>
-                <th className="text-center py-3 px-4 font-medium text-red-500">
-                  Level of Cognitive<br />Readiness in<br />Language of Assessment
-                </th>
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Perception</th>
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Spatial</th>
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Reasoning</th>
@@ -131,13 +99,15 @@ export default async function AssessmentDetailsPage({ params }: { params: Promis
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Co-<br />ordination</th>
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Memory</th>
                 <th className="text-center py-3 px-4 font-medium text-gray-600">Verbal<br />Comprehension</th>
+                <th className="text-center py-3 px-4 font-medium text-red-500">
+                  Level of Cognitive<br />Readiness in<br />Language of Assessment
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {studentResults.map((student) => (
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="py-3 px-4">{student.name}</td>
-                  <td className="py-3 px-4 text-center text-red-500 font-medium">{student.cognitive}</td>
                   <td className="py-3 px-4 text-center">{student.perception}</td>
                   <td className="py-3 px-4 text-center">{student.spatial}</td>
                   <td className="py-3 px-4 text-center">{student.reasoning}</td>
@@ -146,6 +116,7 @@ export default async function AssessmentDetailsPage({ params }: { params: Promis
                   <td className="py-3 px-4 text-center">{student.coordination}</td>
                   <td className="py-3 px-4 text-center">{student.memory}</td>
                   <td className="py-3 px-4 text-center">{student.verbalComprehension}</td>
+                  <td className="py-3 px-4 text-center text-red-500 font-medium">{student.cognitive}</td>
                 </tr>
               ))}
             </tbody>
