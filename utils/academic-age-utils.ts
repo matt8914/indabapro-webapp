@@ -301,6 +301,572 @@ export function convertToSpellingAge(rawScore: number): string {
 }
 
 /**
+ * Converts a raw Basic Number Screening Test (BNST) 5th Edition score to a number age
+ * @param rawScore The raw score from the assessment (0-50)
+ * @returns The number age in years and months format (e.g., 6.0, 8.9)
+ */
+export function convertToBNSTAge(rawScore: number): string {
+  // Define the conversion table based on the BNST 5th Edition Table D
+  const bnstAgeTable: { [key: number]: string } = {
+    1: "6.0",
+    2: "6.1",
+    3: "6.2",
+    4: "6.3",
+    5: "6.5",
+    6: "6.6",
+    7: "6.7",
+    8: "6.8",
+    9: "6.10",
+    10: "6.11",
+    11: "7.0",
+    12: "7.1",
+    13: "7.2",
+    14: "7.4",
+    15: "7.5",
+    16: "7.7",
+    17: "7.8",
+    18: "7.9",
+    19: "7.10",
+    20: "8.0",
+    21: "8.1",
+    22: "8.2",
+    23: "8.4",
+    24: "8.5",
+    25: "8.7",
+    26: "8.9",
+    27: "8.11",
+    28: "9.0",
+    29: "9.2",
+    30: "9.3",
+    31: "9.5",
+    32: "9.7",
+    33: "9.9",
+    34: "10.1",
+    35: "10.2",
+    36: "10.4",
+    37: "10.6",
+    38: "10.8",
+    39: "10.10",
+    40: "11.0",
+    41: "11.4",
+    42: "11.8",
+    43: "12.0",
+    44: "12.3",
+    45: "12.9",
+    46: "13.3",
+    47: "14.0",
+    48: "14.8",
+    49: ">14.8",
+    50: ">14.8"
+  };
+
+  // If score is less than 1, return "< 6.0"
+  if (rawScore < 1) {
+    return "< 6.0";
+  }
+  
+  // If score is higher than 50, return "> 14.8"
+  if (rawScore > 50) {
+    return "> 14.8";
+  }
+
+  return bnstAgeTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Burt Word Reading Test score to a reading level
+ * @param rawScore The raw score from the assessment (2-110)
+ * @returns The reading level in years and months format (e.g., 5.3, 8.9)
+ */
+export function convertToBurtReadingLevel(rawScore: number): string {
+  // Define the conversion table based on the Burt Word Reading Test
+  const burtReadingTable: { [key: number]: string } = {
+    2: "5.3",
+    3: "5.3",
+    4: "5.4",
+    5: "5.5",
+    6: "5.5",
+    7: "5.6",
+    8: "5.6",
+    9: "5.7",
+    10: "5.7",
+    11: "5.8",
+    12: "5.9",
+    13: "5.9",
+    14: "5.10",
+    15: "5.11",
+    16: "5.11",
+    17: "6.0",
+    18: "6.1",
+    19: "6.1",
+    20: "6.2",
+    21: "6.2",
+    22: "6.3",
+    23: "6.4",
+    24: "6.5",
+    25: "6.5",
+    26: "6.6",
+    27: "6.7",
+    28: "6.8",
+    29: "6.9",
+    30: "6.9",
+    31: "6.9",
+    32: "6.10",
+    33: "6.11",
+    34: "7.0",
+    35: "7.1",
+    36: "7.2",
+    37: "7.3",
+    38: "7.4",
+    39: "7.5",
+    40: "7.5",
+    41: "7.6",
+    42: "7.7",
+    43: "7.8",
+    44: "7.9",
+    45: "7.10",
+    46: "7.11",
+    47: "8.0",
+    48: "8.1",
+    49: "8.2",
+    50: "8.3",
+    51: "8.4",
+    52: "8.5",
+    53: "8.6",
+    54: "8.7",
+    55: "8.8",
+    56: "8.9",
+    57: "8.10",
+    58: "9.0",
+    59: "9.1",
+    60: "9.2",
+    61: "9.3",
+    62: "9.4",
+    63: "9.6",
+    64: "9.7",
+    65: "9.8",
+    66: "9.9",
+    67: "9.10",
+    68: "10.0",
+    69: "10.1",
+    70: "10.2",
+    71: "10.3",
+    72: "10.4",
+    73: "10.6",
+    74: "10.7",
+    75: "10.9",
+    76: "10.10",
+    77: "10.11",
+    78: "11.0",
+    79: "11.1",
+    80: "11.3",
+    81: "11.4",
+    82: "11.5",
+    83: "11.6",
+    84: "11.7",
+    85: "11.9",
+    86: "11.10",
+    87: "11.11",
+    88: "12.0",
+    89: "12.1",
+    90: "12.3",
+    91: "12.4",
+    92: "12.5",
+    93: "12.6",
+    94: "12.7",
+    95: "12.9",
+    96: "12.10",
+    97: "12.11",
+    98: "13.0",
+    99: "13.1",
+    100: "13.3",
+    101: "13.4",
+    102: "13.6",
+    103: "13.6",
+    104: "13.7",
+    105: "13.9",
+    106: "13.10",
+    107: "13.11",
+    108: "14.0",
+    109: "14.1",
+    110: "14.3"
+  };
+
+  // If score is less than 2, return "< 5.3"
+  if (rawScore < 2) {
+    return "< 5.3";
+  }
+  
+  // If score is higher than 110, return "> 14.3"
+  if (rawScore > 110) {
+    return "> 14.3";
+  }
+
+  return burtReadingTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Daniels & Daick Graded Test of Reading Experience score to a reading experience age
+ * @param rawScore The raw score from the assessment (0-50+)
+ * @returns The reading experience age in years.months format (e.g., 7.5, 11.2)
+ */
+export function convertToDanielsAndDaickAge(rawScore: number): string {
+  // Define the conversion table based on the Daniels & Daick Graded Test of Reading Experience
+  const danielsAndDaickTable: { [key: number]: string } = {
+    // Scores 0-9: No conversion (dashes in original table)
+    0: "No conversion available",
+    1: "No conversion available", 
+    2: "No conversion available",
+    3: "No conversion available",
+    4: "No conversion available",
+    5: "No conversion available",
+    6: "No conversion available",
+    7: "No conversion available",
+    8: "No conversion available",
+    9: "No conversion available",
+    
+    // Scores 10-19 (Row 10): 6.0 to 6.9
+    10: "6.0",
+    11: "6.1",
+    12: "6.2", 
+    13: "6.3",
+    14: "6.4",
+    15: "6.5",
+    16: "6.6",
+    17: "6.7",
+    18: "6.8",
+    19: "6.9",
+    
+    // Scores 20-29 (Row 20): 7.0 to 8.0
+    20: "7.0",
+    21: "7.1",
+    22: "7.2",
+    23: "7.4",
+    24: "7.5",
+    25: "7.6",
+    26: "7.7",
+    27: "7.8",
+    28: "7.9",
+    29: "8.0",
+    
+    // Scores 30-39 (Row 30): 8.2 to 9.3
+    30: "8.2",
+    31: "8.3",
+    32: "8.4",
+    33: "8.6",
+    34: "8.7",
+    35: "8.8",
+    36: "9.0",
+    37: "9.1",
+    38: "9.2",
+    39: "9.3",
+    
+    // Scores 40-49 (Row 40): 9.7 to 13.7
+    40: "9.7",
+    41: "10.0",
+    42: "10.3",
+    43: "10.7",
+    44: "11.2",
+    45: "11.6",
+    46: "12.1",
+    47: "12.6",
+    48: "13.1",
+    49: "13.7"
+  };
+
+  // If score is less than 10, no conversion available
+  if (rawScore < 10) {
+    return "No conversion available";
+  }
+  
+  // If score is 50 or higher, return "14.0+"
+  if (rawScore >= 50) {
+    return "14.0+";
+  }
+
+  return danielsAndDaickTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Daniels & Daick Graded Spelling Test score to a spelling age
+ * @param rawScore The raw score from the assessment (0-40)
+ * @returns The spelling age in years.months format (e.g., 7.5, 11.2)
+ */
+export function convertToDanielsAndDaickSpellingAge(rawScore: number): string {
+  // Define the conversion table based on the Daniels & Daick Graded Spelling Test
+  const danielsAndDaickSpellingTable: { [key: number]: string } = {
+    0: "5.0",
+    1: "5.2",
+    2: "5.3",
+    3: "5.4",
+    4: "5.5",
+    5: "5.6",
+    6: "5.7",
+    7: "5.8",
+    8: "5.9",
+    9: "6.0",
+    10: "6.1",
+    11: "6.2",
+    12: "6.3",
+    13: "6.4",
+    14: "6.5",
+    15: "6.6",
+    16: "6.7",
+    17: "6.8",
+    18: "7.0",
+    19: "7.1",
+    20: "7.2",
+    21: "7.3",
+    22: "7.5",
+    23: "7.6",
+    24: "7.7",
+    25: "7.8",
+    26: "7.9",
+    27: "8.1",
+    28: "8.2",
+    29: "8.3",
+    30: "8.5",
+    31: "8.7",
+    32: "9.0",
+    33: "9.2",
+    34: "9.5",
+    35: "9.8",
+    36: "10.2",
+    37: "10.5",
+    38: "11.0",
+    39: "11.6",
+    40: "12.3"
+  };
+
+  // If score is higher than 40, return "> 12.3"
+  if (rawScore > 40) {
+    return "> 12.3";
+  }
+  
+  // If score is negative, return "Invalid score"
+  if (rawScore < 0) {
+    return "Invalid score";
+  }
+
+  return danielsAndDaickSpellingTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Vernon Graded Arithmetic Mathematics Test score to a mathematics age
+ * @param rawScore The raw score from the assessment (3-53)
+ * @returns The mathematics age in years.months format (e.g., 7.2, 11.4)
+ */
+export function convertToVernonMathsAge(rawScore: number): string {
+  // Define the conversion table based on the Vernon Graded Arithmetic Mathematics Test (Canadian norms)
+  const vernonMathsTable: { [key: number]: string } = {
+    3: "6.0",
+    4: "6.1",
+    5: "6.3",
+    6: "6.5",
+    7: "6.7",
+    8: "6.10",
+    9: "7.0",
+    10: "7.2",
+    11: "7.4",
+    12: "7.6",
+    13: "7.8",
+    14: "7.10",
+    15: "8.0",
+    16: "8.2",
+    17: "8.3",
+    18: "8.5",
+    19: "8.6",
+    20: "8.8",
+    21: "8.10",
+    22: "8.11",
+    23: "9.1",
+    24: "9.2",
+    25: "9.4",
+    26: "9.5",
+    27: "9.6",
+    28: "9.8",
+    29: "9.9",
+    30: "9.11",
+    31: "10.0",
+    32: "10.2",
+    33: "10.3",
+    34: "10.5",
+    35: "10.6",
+    36: "10.8",
+    37: "10.9",
+    38: "10.11",
+    39: "11.0",
+    40: "11.2",
+    41: "11.4",
+    42: "11.5",
+    43: "11.5",
+    44: "11.6",
+    45: "11.9",
+    46: "11.10",
+    47: "12.0",
+    48: "12.2",
+    49: "12.4",
+    50: "12.5",
+    51: "12.7",
+    52: "12.8",
+    53: "13.0"
+  };
+
+  // If score is less than 3, return "< 6.0"
+  if (rawScore < 3) {
+    return "< 6.0";
+  }
+  
+  // If score is higher than 53, return "> 13.0"
+  if (rawScore > 53) {
+    return "> 13.0";
+  }
+
+  return vernonMathsTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Schonell Reading Test score to a reading age
+ * @param rawScore The raw score from the assessment (0-99)
+ * @returns The reading age in years.months format (e.g., 7.06, 11.08)
+ */
+export function convertToSchonellReadingAge(rawScore: number): string {
+  // If score is negative, return "Invalid score"
+  if (rawScore < 0) {
+    return "Invalid score";
+  }
+  
+  // If score is higher than 99, return "> 14.11"
+  if (rawScore > 99) {
+    return "> 14.11";
+  }
+  
+  // Define the scoring matrix based on the Schonell Reading Test
+  const schonellMatrix: { [key: number]: string[] } = {
+    0: ["< 5.00", "5.01", "5.02", "5.04", "5.05", "5.06", "5.07", "5.08", "5.10", "5.11"],
+    10: ["6.00", "6.01", "6.02", "6.04", "6.05", "6.06", "6.07", "6.08", "6.10", "6.11"],
+    20: ["7.00", "7.01", "7.02", "7.04", "7.05", "7.06", "7.07", "7.08", "7.10", "7.11"],
+    30: ["8.00", "8.01", "8.02", "8.04", "8.05", "8.06", "8.07", "8.08", "8.10", "8.11"],
+    40: ["9.00", "9.01", "9.02", "9.04", "9.05", "9.06", "9.07", "9.08", "9.10", "9.11"],
+    50: ["10.00", "10.01", "10.02", "10.04", "10.05", "10.06", "10.07", "10.08", "10.10", "10.11"],
+    60: ["11.00", "11.01", "11.02", "11.04", "11.05", "11.06", "11.07", "11.08", "11.10", "11.11"],
+    70: ["12.00", "12.01", "12.02", "12.04", "12.05", "12.06", "12.07", "12.08", "12.10", "12.11"],
+    80: ["13.00", "13.01", "13.02", "13.04", "13.05", "13.06", "13.07", "13.08", "13.10", "13.11"],
+    90: ["14.00", "14.01", "14.02", "14.04", "14.05", "14.06", "14.07", "14.08", "14.10", "14.11"]
+  };
+  
+  // Find the appropriate row (base score)
+  const baseScore = Math.floor(rawScore / 10) * 10;
+  
+  // Find the column (remainder)
+  const remainder = rawScore % 10;
+  
+  // Get the matrix value
+  const row = schonellMatrix[baseScore];
+  if (row && row[remainder] !== undefined) {
+    return row[remainder];
+  }
+  
+  return "Invalid score";
+}
+
+/**
+ * Converts a raw One-Minute Reading Test score to a reading age
+ * @param rawScore The raw score from the assessment (31-120)
+ * @returns The reading age in years.months format (e.g., 7.4, 11.8)
+ */
+export function convertToOneMinuteReadingAge(rawScore: number): string {
+  // Define the conversion table based on the One-Minute Reading Test
+  const oneMinuteReadingTable: { [key: number]: string } = {
+    31: "6.6", 32: "6.7", 33: "6.9", 34: "6.11", 35: "7.0", 36: "7.2", 37: "7.4", 38: "7.5", 39: "7.6",
+    40: "7.6", 41: "7.7", 42: "7.7", 43: "7.8", 44: "7.8", 45: "7.9", 46: "7.10", 47: "7.10", 48: "7.11", 49: "7.11",
+    50: "8.0", 51: "8.1", 52: "8.1", 53: "8.2", 54: "8.2", 55: "8.3", 56: "8.4", 57: "8.4", 58: "8.5", 59: "8.5",
+    60: "8.6", 61: "8.7", 62: "8.7", 63: "8.8", 64: "8.8", 65: "8.9", 66: "8.10", 67: "8.10", 68: "8.11", 69: "8.11",
+    70: "9.0", 71: "9.1", 72: "9.2", 73: "9.4", 74: "9.5", 75: "9.6", 76: "9.7", 77: "9.8", 78: "9.10", 79: "9.11",
+    80: "10.1", 81: "10.1", 82: "10.2", 83: "10.3", 84: "10.4", 85: "10.5", 86: "10.6", 87: "10.7", 88: "10.8", 89: "10.9",
+    90: "10.10", 91: "10.11", 92: "11.0", 93: "11.1", 94: "11.2", 95: "11.4", 96: "11.5", 97: "11.6", 98: "11.7", 99: "11.8",
+    100: "11.10", 101: "11.11", 102: "12.0", 103: "12.1", 104: "12.2", 105: "12.3", 106: "12.4", 107: "12.5", 108: "12.6", 109: "12.7",
+    110: "12.8", 111: "12.8", 112: "12.9", 113: "12.10", 114: "12.11", 115: "13.0", 116: "13.2", 117: "13.4", 118: "13.6", 119: "13.8",
+    120: "13.10"
+  };
+
+  // If score is less than 31, return "< 6.6"
+  if (rawScore < 31) {
+    return "< 6.6";
+  }
+  
+  // If score is higher than 120, return "> 13.10"
+  if (rawScore > 120) {
+    return "> 13.10";
+  }
+
+  return oneMinuteReadingTable[rawScore] || "Invalid score";
+}
+
+/**
+ * Converts a raw Young's Group Reading Test score to a reading age
+ * @param rawScore The raw score from the assessment (5-44)
+ * @returns The reading age in years.months format (e.g., 5.6, 7.3, 13.4)
+ */
+export function convertToYoungsGroupReadingAge(rawScore: number): string {
+  // Define the conversion table based on Young's Group Reading Test
+  const youngsGroupReadingTable: { [key: number]: string } = {
+    5: "5.6",
+    6: "5.8",
+    7: "5.10",
+    8: "6.0",
+    9: "6.2",
+    10: "6.4",
+    11: "6.6",
+    12: "6.8",
+    13: "6.10",
+    14: "7.0",
+    15: "7.2",
+    16: "7.4",
+    17: "7.6",
+    18: "7.8",
+    19: "7.10",
+    20: "8.0",
+    21: "8.2",
+    22: "8.4",
+    23: "8.6",
+    24: "8.8",
+    25: "8.10",
+    26: "9.0",
+    27: "9.2",
+    28: "9.4",
+    29: "9.6",
+    30: "9.8",
+    31: "9.10",
+    32: "10.0",
+    33: "10.2",
+    34: "10.4",
+    35: "10.6",
+    36: "10.8",
+    37: "10.10",
+    38: "11.0",
+    39: "11.2",
+    40: "11.4",
+    41: "11.6",
+    42: "11.8",
+    43: "11.10",
+    44: "12.0"
+  };
+
+  // If score is less than 5, return "< 5.6"
+  if (rawScore < 5) {
+    return "< 5.6";
+  }
+  
+  // If score is higher than 44, return "> 12.0"
+  if (rawScore > 44) {
+    return "> 12.0";
+  }
+
+  return youngsGroupReadingTable[rawScore] || "Invalid score";
+}
+
+/**
  * Converts academic age in tenths format to years and months format
  * @param ageInTenths The age in years and tenths format (e.g., 7.5)
  * @returns The age in years and months format (e.g., "7 years 6 months")

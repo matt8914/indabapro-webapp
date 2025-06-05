@@ -121,9 +121,21 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
   // Check if this is an academic age assessment
   const isAcademicAgeAssessment = [
     "YOUNG Maths A Assessment",
+    "YOUNG Maths B Assessment",
     "SPAR Reading Assessment A",
     "SPAR Reading Assessment B",
-    "Schonell Spelling A"
+    "Schonell Spelling A",
+    "Schonell Spelling B",
+    "Basic Number Screening Test 5th Edition Test A",
+    "Basic Number Screening Test 5th Edition Test B",
+    "Burt Word Reading Test",
+    "Daniels & Daick Graded Test of Reading Experience",
+    "Daniels & Daick Graded Spelling Test",
+    "Vernon Graded Arithmetic Mathematics Test",
+    "Schonell Reading Test",
+    "One-Minute Reading Test",
+    "Young's Group Reading Test A",
+    "Young's Group Reading Test B"
   ].includes(session.assessment_types.name);
 
   // Fetch existing scores

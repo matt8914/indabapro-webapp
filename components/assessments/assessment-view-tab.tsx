@@ -97,16 +97,39 @@ export function AssessmentViewTab({
   // Define academic age assessment types
   const academicAgeTypes = [
     "YOUNG Maths A Assessment",
+    "YOUNG Maths B Assessment",
     "SPAR Reading Assessment A",
     "SPAR Reading Assessment B",
-    "Schonell Spelling A"
+    "Schonell Spelling A",
+    "Schonell Spelling B",
+    "Basic Number Screening Test 5th Edition Test A",
+    "Basic Number Screening Test 5th Edition Test B",
+    "Burt Word Reading Test",
+    "Daniels & Daick Graded Test of Reading Experience",
+    "Daniels & Daick Graded Spelling Test",
+    "Vernon Graded Arithmetic Mathematics Test",
+    "Schonell Reading Test",
+    "One-Minute Reading Test",
+    "Young's Group Reading Test A",
+    "Young's Group Reading Test B"
   ];
 
   // Get academic age test type
   const getAcademicAgeType = (assessmentType: string): 'maths' | 'reading' | 'spelling' | null => {
     if (assessmentType === "YOUNG Maths A Assessment") return 'maths';
+    if (assessmentType === "YOUNG Maths B Assessment") return 'maths';
+    if (assessmentType === "Basic Number Screening Test 5th Edition Test A") return 'maths';
+    if (assessmentType === "Basic Number Screening Test 5th Edition Test B") return 'maths';
+    if (assessmentType === "Vernon Graded Arithmetic Mathematics Test") return 'maths';
     if (assessmentType === "SPAR Reading Assessment A" || assessmentType === "SPAR Reading Assessment B") return 'reading';
-    if (assessmentType === "Schonell Spelling A") return 'spelling';
+    if (assessmentType === "Burt Word Reading Test") return 'reading';
+    if (assessmentType === "Daniels & Daick Graded Test of Reading Experience") return 'reading';
+    if (assessmentType === "Schonell Reading Test") return 'reading';
+    if (assessmentType === "One-Minute Reading Test") return 'reading';
+    if (assessmentType === "Young's Group Reading Test A") return 'reading';
+    if (assessmentType === "Young's Group Reading Test B") return 'reading';
+    if (assessmentType === "Schonell Spelling A" || assessmentType === "Schonell Spelling B") return 'spelling';
+    if (assessmentType === "Daniels & Daick Graded Spelling Test") return 'spelling';
     return null;
   };
 

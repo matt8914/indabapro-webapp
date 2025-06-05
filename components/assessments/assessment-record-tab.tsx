@@ -94,9 +94,21 @@ export function AssessmentRecordTab({
   // Define academic age assessment types
   const academicAgeTypes = [
     "YOUNG Maths A Assessment",
+    "YOUNG Maths B Assessment",
     "SPAR Reading Assessment A",
     "SPAR Reading Assessment B",
-    "Schonell Spelling A"
+    "Schonell Spelling A",
+    "Schonell Spelling B",
+    "Basic Number Screening Test 5th Edition Test A",
+    "Basic Number Screening Test 5th Edition Test B",
+    "Burt Word Reading Test",
+    "Daniels & Daick Graded Test of Reading Experience",
+    "Daniels & Daick Graded Spelling Test",
+    "Vernon Graded Arithmetic Mathematics Test",
+    "Schonell Reading Test",
+    "One-Minute Reading Test",
+    "Young's Group Reading Test A",
+    "Young's Group Reading Test B"
   ];
   
   // Check if current assessment is an academic age type
@@ -111,9 +123,21 @@ export function AssessmentRecordTab({
     if (!currentType) return null;
     
     if (currentType.name === "YOUNG Maths A Assessment") return 'maths';
+    if (currentType.name === "YOUNG Maths B Assessment") return 'maths';
+    if (currentType.name === "Basic Number Screening Test 5th Edition Test A") return 'maths';
+    if (currentType.name === "Basic Number Screening Test 5th Edition Test B") return 'maths';
+    if (currentType.name === "Vernon Graded Arithmetic Mathematics Test") return 'maths';
     if (currentType.name === "SPAR Reading Assessment A") return 'reading';
     if (currentType.name === "SPAR Reading Assessment B") return 'reading';
+    if (currentType.name === "Burt Word Reading Test") return 'reading';
+    if (currentType.name === "Daniels & Daick Graded Test of Reading Experience") return 'reading';
+    if (currentType.name === "Schonell Reading Test") return 'reading';
+    if (currentType.name === "One-Minute Reading Test") return 'reading';
+    if (currentType.name === "Young's Group Reading Test A") return 'reading';
+    if (currentType.name === "Young's Group Reading Test B") return 'reading';
     if (currentType.name === "Schonell Spelling A") return 'spelling';
+    if (currentType.name === "Schonell Spelling B") return 'spelling';
+    if (currentType.name === "Daniels & Daick Graded Spelling Test") return 'spelling';
     
     return null;
   };
@@ -434,13 +458,8 @@ export function AssessmentRecordTab({
       // 2. Get the session ID
       const sessionId = session.id;
       
-      // 3. Determine academic age test type
-      let academicAgeType: 'maths' | 'reading' | 'spelling' | null = null;
-      const currentType = getCurrentAssessmentType();
-      
-      if (currentType?.name === "YOUNG Maths A Assessment") academicAgeType = 'maths';
-      if (currentType?.name === "SPAR Reading Assessment A" || currentType?.name === "SPAR Reading Assessment B") academicAgeType = 'reading';
-      if (currentType?.name === "Schonell Spelling A") academicAgeType = 'spelling';
+      // 3. Determine academic age test type using existing function
+      const academicAgeType = getAcademicAgeType();
       
       if (!academicAgeType) {
         throw new Error('Invalid academic age assessment type');

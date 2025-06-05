@@ -11,6 +11,14 @@ import {
   convertToReadingAge,
   convertToReadingAgeMonths,
   convertToSpellingAge,
+  convertToBNSTAge,
+  convertToBurtReadingLevel,
+  convertToDanielsAndDaickAge,
+  convertToDanielsAndDaickSpellingAge,
+  convertToVernonMathsAge,
+  convertToSchonellReadingAge,
+  convertToOneMinuteReadingAge,
+  convertToYoungsGroupReadingAge,
   convertTenthsToYearsMonths,
   convertSpellingAgeToYearsMonths,
   convertReadingAgeToYearsMonths,
@@ -102,12 +110,37 @@ export function AcademicAgeAssessment({
     // Calculate academic age based on assessment type
     let academicAge = "";
     if (testType === 'maths' && rawScore !== "") {
-      academicAge = convertToMathsAge(rawScore as number);
+      // Check which mathematics test it is
+      if (testTypeName.includes("Basic Number Screening Test")) {
+        academicAge = convertToBNSTAge(rawScore as number);
+      } else if (testTypeName.includes("Vernon Graded Arithmetic")) {
+        academicAge = convertToVernonMathsAge(rawScore as number);
+      } else {
+        academicAge = convertToMathsAge(rawScore as number);
+      }
     } else if (testType === 'spelling' && rawScore !== "") {
-      academicAge = convertToSpellingAge(rawScore as number);
+      // Check which spelling test it is
+      if (testTypeName.includes("Daniels & Daick")) {
+        academicAge = convertToDanielsAndDaickSpellingAge(rawScore as number);
+      } else {
+        academicAge = convertToSpellingAge(rawScore as number);
+      }
     } else if (testType === 'reading' && rawScore !== "") {
-      // Use the years.tenths format for calculations
-      academicAge = convertToReadingAge(rawScore as number);
+      // Check which reading test it is
+      if (testTypeName.includes("Burt Word Reading Test")) {
+        academicAge = convertToBurtReadingLevel(rawScore as number);
+      } else if (testTypeName.includes("Daniels & Daick")) {
+        academicAge = convertToDanielsAndDaickAge(rawScore as number);
+      } else if (testTypeName.includes("Schonell Reading Test")) {
+        academicAge = convertToSchonellReadingAge(rawScore as number);
+      } else if (testTypeName.includes("One-Minute Reading Test")) {
+        academicAge = convertToOneMinuteReadingAge(rawScore as number);
+      } else if (testTypeName.includes("Young's Group Reading Test")) {
+        academicAge = convertToYoungsGroupReadingAge(rawScore as number);
+      } else {
+        // Use the years.tenths format for SPAR Reading tests
+        academicAge = convertToReadingAge(rawScore as number);
+      }
     }
     
     // Calculate difference and deficit
@@ -172,11 +205,33 @@ export function AcademicAgeAssessment({
   // Get max score hint based on test type
   const getMaxScoreHint = () => {
     if (testType === 'maths') {
-      return '(0-56)';
+      if (testTypeName.includes("Basic Number Screening Test")) {
+        return '(0-50)';
+      } else if (testTypeName.includes("Vernon Graded Arithmetic")) {
+        return '(3-53)';
+      } else {
+        return '(0-56)';
+      }
     } else if (testType === 'reading') {
-      return '(0-42)';
+      if (testTypeName.includes("Burt Word Reading Test")) {
+        return '(2-110)';
+      } else if (testTypeName.includes("Daniels & Daick")) {
+        return '(0-50+)';
+      } else if (testTypeName.includes("Schonell Reading Test")) {
+        return '(0-99)';
+      } else if (testTypeName.includes("One-Minute Reading Test")) {
+        return '(31-120)';
+      } else if (testTypeName.includes("Young's Group Reading Test")) {
+        return '(5-44)';
+      } else {
+        return '(0-42)';
+      }
     } else if (testType === 'spelling') {
-      return '(0-80)';
+      if (testTypeName.includes("Daniels & Daick")) {
+        return '(0-40)';
+      } else {
+        return '(0-80)';
+      }
     }
     return '';
   };
@@ -184,11 +239,33 @@ export function AcademicAgeAssessment({
   // Get test type specific help text
   const getTestTypeHelpText = () => {
     if (testType === 'maths') {
-      return 'Raw scores are converted to academic ages in years.tenths format and compared with chronological age.';
+      if (testTypeName.includes("Basic Number Screening Test")) {
+        return 'Raw scores from the Basic Number Screening Test are converted to number ages in years.months format and compared with chronological age.';
+      } else if (testTypeName.includes("Vernon Graded Arithmetic")) {
+        return 'Raw scores from the Vernon Graded Arithmetic Mathematics Test are converted to mathematics ages in years.months format using Canadian norms and compared with chronological age.';
+      } else {
+        return 'Raw scores are converted to academic ages in years.tenths format and compared with chronological age.';
+      }
     } else if (testType === 'spelling') {
-      return 'Raw scores from the Schonell Spelling Assessment are directly converted to spelling ages in years.months format.';
+      if (testTypeName.includes("Daniels & Daick")) {
+        return 'Raw scores from the Daniels & Daick Graded Spelling Test are converted to spelling ages in years.months format and compared with chronological age.';
+      } else {
+        return 'Raw scores from the Schonell Spelling Assessment are directly converted to spelling ages in years.months format.';
+      }
     } else if (testType === 'reading') {
-      return 'Raw scores from the SPAR Reading Assessment are converted to reading ages in years.tenths format.';
+      if (testTypeName.includes("Burt Word Reading Test")) {
+        return 'Raw scores from the Burt Word Reading Test are converted to reading levels in years.months format and compared with chronological age.';
+      } else if (testTypeName.includes("Daniels & Daick")) {
+        return 'Raw scores from the Daniels & Daick Graded Test of Reading Experience are converted to reading experience ages in years.months format and compared with chronological age.';
+      } else if (testTypeName.includes("Schonell Reading Test")) {
+        return 'Raw scores from the Schonell Reading Test are converted to reading ages in years.months format using a scoring matrix and compared with chronological age.';
+      } else if (testTypeName.includes("One-Minute Reading Test")) {
+        return 'Raw scores from the One-Minute Reading Test are converted to reading ages in years.months format and compared with chronological age.';
+      } else if (testTypeName.includes("Young's Group Reading Test")) {
+        return 'Raw scores from Young\'s Group Reading Test are converted to reading quotient ages in years.months format and compared with chronological age.';
+      } else {
+        return 'Raw scores from the SPAR Reading Assessment are converted to reading ages in years.tenths format.';
+      }
     }
     return 'Scores will be converted to academic ages and compared to chronological ages.';
   };
@@ -200,7 +277,27 @@ export function AcademicAgeAssessment({
     if (testType === 'spelling') {
       return convertSpellingAgeToYearsMonths(academicAge);
     } else if (testType === 'reading') {
-      return convertReadingAgeToYearsMonths(academicAge);
+      if (testTypeName.includes("Burt Word Reading Test")) {
+        // Burt outputs years.months format like spelling
+        return convertSpellingAgeToYearsMonths(academicAge);
+      } else if (testTypeName.includes("Daniels & Daick")) {
+        // Daniels & Daick outputs years.months format like spelling
+        return convertSpellingAgeToYearsMonths(academicAge);
+      } else if (testTypeName.includes("Schonell Reading Test")) {
+        // Schonell outputs years.months format like spelling
+        return convertSpellingAgeToYearsMonths(academicAge);
+      } else if (testTypeName.includes("One-Minute Reading Test")) {
+        // One-Minute Reading Test outputs years.months format like spelling
+        return convertSpellingAgeToYearsMonths(academicAge);
+      } else if (testTypeName.includes("Young's Group Reading Test")) {
+        // Young's Group Reading Test outputs years.months format like spelling
+        return convertSpellingAgeToYearsMonths(academicAge);
+      } else {
+        return convertReadingAgeToYearsMonths(academicAge);
+      }
+    } else if (testType === 'maths' && (testTypeName.includes("Basic Number Screening Test") || testTypeName.includes("Vernon Graded Arithmetic"))) {
+      // BNST and Vernon output years.months format like spelling
+      return convertSpellingAgeToYearsMonths(academicAge);
     } else {
       return convertTenthsToYearsMonths(academicAge);
     }
@@ -255,7 +352,7 @@ export function AcademicAgeAssessment({
             <h2 className="text-xl font-semibold">
               {testTypeName} - Raw Scores
             </h2>
-            <SimpleTooltip text="Enter the raw score for each student. The system will automatically calculate academic age and compare with chronological age.">
+            <SimpleTooltip content="Enter the raw score for each student. The system will automatically calculate academic age and compare with chronological age.">
               <HelpCircle size={16} className="text-gray-400 cursor-help" />
             </SimpleTooltip>
           </div>
@@ -281,7 +378,7 @@ export function AcademicAgeAssessment({
                 <th className="py-4 px-2 text-center font-medium">
                   <div className="text-sm">Academic Age</div>
                   <div className="text-xs text-gray-500">
-                    {testType === 'spelling' ? '(Years.Months)' : testType === 'reading' ? '(Years.Tenths)' : '(Years.Tenths)'}
+                    {testType === 'spelling' || (testType === 'maths' && (testTypeName.includes("Basic Number Screening Test") || testTypeName.includes("Vernon Graded Arithmetic"))) || (testType === 'reading' && (testTypeName.includes("Burt Word Reading Test") || testTypeName.includes("Daniels & Daick") || testTypeName.includes("Schonell Reading Test") || testTypeName.includes("One-Minute Reading Test") || testTypeName.includes("Young's Group Reading Test"))) ? '(Years.Months)' : testType === 'reading' ? '(Years.Tenths)' : '(Years.Tenths)'}
                   </div>
                 </th>
                 <th className="py-4 px-2 text-center font-medium">
@@ -307,8 +404,12 @@ export function AcademicAgeAssessment({
                       <Input
                         type="number"
                         className="w-full"
-                        min={0}
-                        max={testType === 'maths' ? 56 : testType === 'reading' ? 42 : 80}
+                        min={
+                          testType === 'maths' && testTypeName.includes("Vernon Graded Arithmetic") ? 3 :
+                          testType === 'reading' && testTypeName.includes("One-Minute Reading Test") ? 31 :
+                          testType === 'reading' && testTypeName.includes("Young's Group Reading Test") ? 5 : 0
+                        }
+                        max={testType === 'maths' ? (testTypeName.includes("Basic Number Screening Test") ? 50 : testTypeName.includes("Vernon Graded Arithmetic") ? 53 : 56) : testType === 'reading' ? (testTypeName.includes("Burt Word Reading Test") ? 110 : testTypeName.includes("Daniels & Daick") ? 100 : testTypeName.includes("Schonell Reading Test") ? 99 : testTypeName.includes("One-Minute Reading Test") ? 120 : testTypeName.includes("Young's Group Reading Test") ? 44 : 42) : testType === 'spelling' ? (testTypeName.includes("Daniels & Daick") ? 40 : 80) : 80}
                         value={scores[student.id]?.rawScore || ""}
                         onChange={(e) => handleScoreChange(student.id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, student.id, students.indexOf(student))}

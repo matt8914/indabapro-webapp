@@ -12,6 +12,14 @@ import {
   convertToMathsAge,
   convertToReadingAge,
   convertToSpellingAge,
+  convertToBNSTAge,
+  convertToBurtReadingLevel,
+  convertToDanielsAndDaickAge,
+  convertToDanielsAndDaickSpellingAge,
+  convertToVernonMathsAge,
+  convertToSchonellReadingAge,
+  convertToOneMinuteReadingAge,
+  convertToYoungsGroupReadingAge,
   convertTenthsToYearsMonths,
   calculateChronologicalAge,
   calculateAgeDifference,
@@ -274,12 +282,28 @@ export function EditAssessmentForm({
     
     // Calculate academic age based on assessment type
     let academicAge = "";
-    if (session.assessment_types.name === "YOUNG Maths A Assessment" && rawScore !== "") {
+    if ((session.assessment_types.name === "YOUNG Maths A Assessment" || session.assessment_types.name === "YOUNG Maths B Assessment") && rawScore !== "") {
       academicAge = convertToMathsAge(rawScore as number);
-    } else if (session.assessment_types.name === "Schonell Spelling A" && rawScore !== "") {
+    } else if ((session.assessment_types.name === "Schonell Spelling A" || session.assessment_types.name === "Schonell Spelling B") && rawScore !== "") {
       academicAge = convertToSpellingAge(rawScore as number);
     } else if ((session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") && rawScore !== "") {
       academicAge = convertToReadingAge(rawScore as number);
+    } else if ((session.assessment_types.name === "Basic Number Screening Test 5th Edition Test A" || session.assessment_types.name === "Basic Number Screening Test 5th Edition Test B") && rawScore !== "") {
+      academicAge = convertToBNSTAge(rawScore as number);
+    } else if (session.assessment_types.name === "Burt Word Reading Test" && rawScore !== "") {
+      academicAge = convertToBurtReadingLevel(rawScore as number);
+    } else if (session.assessment_types.name === "Daniels & Daick Graded Test of Reading Experience" && rawScore !== "") {
+      academicAge = convertToDanielsAndDaickAge(rawScore as number);
+    } else if (session.assessment_types.name === "Daniels & Daick Graded Spelling Test" && rawScore !== "") {
+      academicAge = convertToDanielsAndDaickSpellingAge(rawScore as number);
+    } else if (session.assessment_types.name === "Vernon Graded Arithmetic Mathematics Test" && rawScore !== "") {
+      academicAge = convertToVernonMathsAge(rawScore as number);
+    } else if (session.assessment_types.name === "Schonell Reading Test" && rawScore !== "") {
+      academicAge = convertToSchonellReadingAge(rawScore as number);
+    } else if (session.assessment_types.name === "One-Minute Reading Test" && rawScore !== "") {
+      academicAge = convertToOneMinuteReadingAge(rawScore as number);
+    } else if ((session.assessment_types.name === "Young's Group Reading Test A" || session.assessment_types.name === "Young's Group Reading Test B") && rawScore !== "") {
+      academicAge = convertToYoungsGroupReadingAge(rawScore as number);
     }
     
     // Calculate difference and deficit
@@ -557,9 +581,17 @@ export function EditAssessmentForm({
       // 2. Update/Insert academic age scores
       // Determine test type
       let academicAgeType: 'maths' | 'reading' | 'spelling' | null = null;
-      if (session.assessment_types.name === "YOUNG Maths A Assessment") academicAgeType = 'maths';
+      if (session.assessment_types.name === "YOUNG Maths A Assessment" || session.assessment_types.name === "YOUNG Maths B Assessment") academicAgeType = 'maths';
+      if (session.assessment_types.name === "Basic Number Screening Test 5th Edition Test A" || session.assessment_types.name === "Basic Number Screening Test 5th Edition Test B") academicAgeType = 'maths';
+      if (session.assessment_types.name === "Vernon Graded Arithmetic Mathematics Test") academicAgeType = 'maths';
       if (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") academicAgeType = 'reading';
-      if (session.assessment_types.name === "Schonell Spelling A") academicAgeType = 'spelling';
+      if (session.assessment_types.name === "Burt Word Reading Test") academicAgeType = 'reading';
+      if (session.assessment_types.name === "Daniels & Daick Graded Test of Reading Experience") academicAgeType = 'reading';
+      if (session.assessment_types.name === "Schonell Reading Test") academicAgeType = 'reading';
+      if (session.assessment_types.name === "One-Minute Reading Test") academicAgeType = 'reading';
+      if (session.assessment_types.name === "Young's Group Reading Test A" || session.assessment_types.name === "Young's Group Reading Test B") academicAgeType = 'reading';
+      if (session.assessment_types.name === "Schonell Spelling A" || session.assessment_types.name === "Schonell Spelling B") academicAgeType = 'spelling';
+      if (session.assessment_types.name === "Daniels & Daick Graded Spelling Test") academicAgeType = 'spelling';
       
       if (!academicAgeType) {
         throw new Error('Invalid academic age assessment type');
@@ -644,15 +676,18 @@ export function EditAssessmentForm({
   const getFormattedAcademicAge = (academicAge: string): string => {
     if (!academicAge) return "";
     
-    if (session.assessment_types.name === "YOUNG Maths A Assessment") {
+    // Most assessments use convertTenthsToYearsMonths, but some already return formatted strings
+    if (session.assessment_types.name === "YOUNG Maths A Assessment" || session.assessment_types.name === "YOUNG Maths B Assessment") {
       return convertTenthsToYearsMonths(academicAge);
     } else if (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") {
       return convertTenthsToYearsMonths(academicAge);
-    } else if (session.assessment_types.name === "Schonell Spelling A") {
+    } else if (session.assessment_types.name === "Schonell Spelling A" || session.assessment_types.name === "Schonell Spelling B") {
       return convertTenthsToYearsMonths(academicAge);
+    } else {
+      // For other assessments that already return formatted strings (like "7 years 3 months" or "7.03")
+      // Return as is - they're already properly formatted
+      return academicAge;
     }
-    
-    return academicAge;
   };
 
   return (
@@ -709,9 +744,9 @@ export function EditAssessmentForm({
                       <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
                         Raw Score
                         <div className="text-xs text-gray-400">
-                          {session.assessment_types.name === "YOUNG Maths A Assessment" && "(0-56)"}
+                          {(session.assessment_types.name === "YOUNG Maths A Assessment" || session.assessment_types.name === "YOUNG Maths B Assessment") && "(0-56)"}
                           {(session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") && "(0-42)"}
-                          {session.assessment_types.name === "Schonell Spelling A" && "(0-80)"}
+                          {(session.assessment_types.name === "Schonell Spelling A" || session.assessment_types.name === "Schonell Spelling B") && "(0-80)"}
                         </div>
                       </th>
                       <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age</th>
@@ -731,7 +766,7 @@ export function EditAssessmentForm({
                             onKeyDown={(e) => handleAcademicAgeKeyDown(e, student.id, studentIndex)}
                             min={0}
                             max={
-                              session.assessment_types.name === "YOUNG Maths A Assessment" ? 56 :
+                              (session.assessment_types.name === "YOUNG Maths A Assessment" || session.assessment_types.name === "YOUNG Maths B Assessment") ? 56 :
                               (session.assessment_types.name === "SPAR Reading Assessment A" || session.assessment_types.name === "SPAR Reading Assessment B") ? 42 :
                               80
                             }
