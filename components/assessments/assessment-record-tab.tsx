@@ -366,7 +366,7 @@ export function AssessmentRecordTab({
   };
 
   // Handle academic age assessment completion
-  const handleAcademicAgeComplete = async (academicAgeScores: AcademicAgeScoresState) => {
+  const handleAcademicAgeComplete = async (academicAgeScores: AcademicAgeScoresState, assessmentRemarks: string) => {
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -382,7 +382,7 @@ export function AssessmentRecordTab({
           class_id: selectedClass,
           tester_id: userId,
           test_date: testDate,
-          remarks: remarks
+          remarks: assessmentRemarks
         })
         .select('id')
         .single();

@@ -47,7 +47,7 @@ interface AcademicAgeAssessmentProps {
   testType: 'maths' | 'reading' | 'spelling';
   testTypeName: string;
   testDate: string;
-  onSaveComplete: (academicAgeScores: AcademicAgeScoresState) => void;
+  onSaveComplete: (academicAgeScores: AcademicAgeScoresState, remarks: string) => void;
   onCancel: () => void;
 }
 
@@ -160,7 +160,7 @@ export function AcademicAgeAssessment({
     
     try {
       // Instead of saving to database, pass scores back to parent component
-      onSaveComplete(scores);
+      onSaveComplete(scores, remarks);
     } catch (err) {
       console.error('Error handling academic age scores:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
