@@ -25,7 +25,7 @@ interface StudentDetails {
   gender: string;
   currentClassId: string; 
   dateOfBirth: string;
-  place: string;
+  location: string;
   homeLanguage: string;
   notes: string;
   specialNeeds: {
@@ -68,7 +68,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
     gender: "",
     currentClassId: "",
     dateOfBirth: "",
-    place: "",
+    location: "",
     homeLanguage: "english",
     notes: "",
     specialNeeds: {
@@ -198,7 +198,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
             currentClassId: studentResult.class_enrollments?.length > 0 ? 
                         studentResult.class_enrollments[0].class_id : "",
             dateOfBirth: studentResult.date_of_birth || "",
-            place: studentResult.location || studentResult.schools?.Location || "",
+            location: studentResult.location || studentResult.schools?.Location || "",
             homeLanguage: studentResult.home_language || "english",
             notes: studentResult.notes || "",
             specialNeeds: {
@@ -306,7 +306,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
         formData.append('schoolId', studentData.school_id);
       }
       
-      formData.append('place', studentInfo.place);
+      formData.append('location', studentInfo.location);
       formData.append('dateOfBirth', studentInfo.dateOfBirth);
       formData.append('homeLanguage', studentInfo.homeLanguage);
       formData.append('occupationalTherapy', studentInfo.specialNeeds.occupationalTherapy);
@@ -490,13 +490,13 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="place">Place</Label>
+                                                         <Label htmlFor="location">Location</Label>
               <Input 
-                id="place" 
-                name="place"
-                placeholder="City/Town" 
-                value={studentInfo.place}
-                onChange={(e) => setStudentInfo({...studentInfo, place: e.target.value})}
+                id="location" 
+                name="location"
+                placeholder="City/Town"
+                value={studentInfo.location}
+                onChange={(e) => setStudentInfo({...studentInfo, location: e.target.value})}
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
             </div>
@@ -528,6 +528,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                 <SelectContent>
                   <SelectItem value="english">English</SelectItem>
                   <SelectItem value="afrikaans">Afrikaans</SelectItem>
+                  <SelectItem value="chinese">Chinese</SelectItem>
                   <SelectItem value="xhosa">Xhosa</SelectItem>
                   <SelectItem value="zulu">Zulu</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
@@ -556,6 +557,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -577,6 +579,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -598,6 +601,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -619,6 +623,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

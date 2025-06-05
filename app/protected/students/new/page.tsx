@@ -362,10 +362,10 @@ export default function NewStudentPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="place">Place</Label>
+              <Label htmlFor="location">Location</Label>
               <Input 
-                id="place" 
-                name="place"
+                id="location" 
+                name="location"
                 placeholder="Location"
                 className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
               />
@@ -392,6 +392,7 @@ export default function NewStudentPage() {
                 <SelectContent>
                   <SelectItem value="english">English</SelectItem>
                   <SelectItem value="afrikaans">Afrikaans</SelectItem>
+                  <SelectItem value="chinese">Chinese</SelectItem>
                   <SelectItem value="xhosa">Xhosa</SelectItem>
                   <SelectItem value="zulu">Zulu</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
@@ -423,6 +424,7 @@ export default function NewStudentPage() {
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -437,6 +439,7 @@ export default function NewStudentPage() {
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -451,6 +454,7 @@ export default function NewStudentPage() {
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -465,6 +469,7 @@ export default function NewStudentPage() {
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
                     <SelectItem value="attending">Attending</SelectItem>
+                    <SelectItem value="discharged">Discharged</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

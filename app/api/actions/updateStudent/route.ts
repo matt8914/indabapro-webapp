@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const classId = formData.get('classId') as string;
     const schoolId = formData.get('schoolId') as string;
     const dateOfBirth = formData.get('dateOfBirth') as string;
-    const place = formData.get('place') as string;
+    const location = formData.get('location') as string;
     const homeLanguage = formData.get('homeLanguage') as string;
     const occupationalTherapy = formData.get('occupationalTherapy') as string;
     const speechTherapy = formData.get('speechTherapy') as string;
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         gender: gender,
         date_of_birth: dateOfBirth || null,
         school_id: schoolId,
-        location: place,
+        location,
         home_language: homeLanguage,
         occupational_therapy: occupationalTherapy,
         speech_language_therapy: speechTherapy,

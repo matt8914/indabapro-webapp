@@ -13,7 +13,7 @@ interface StudentDetailsForPdf {
   gender?: string;
   homeLanguage?: string;
   school?: string;
-  place?: string;
+  location?: string;
   // Academic ages
   chronologicalAge?: string;
   mathsAge?: { academicAge: string | null; difference: string | null; isDeficit: boolean; lastAssessmentDate?: string | null };
@@ -211,7 +211,7 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
           <View style={styles.gridItem}><Text style={styles.label}>Class</Text><Text style={styles.value}>{studentData.className || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>{studentData.teacherLabel || 'Teacher'}</Text><Text style={styles.value}>{studentData.teacher || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>School</Text><Text style={styles.value}>{studentData.school || 'N/A'}</Text></View>
-          <View style={styles.gridItem}><Text style={styles.label}>Place</Text><Text style={styles.value}>{studentData.place || 'N/A'}</Text></View>
+          <View style={styles.gridItem}><Text style={styles.label}>Place</Text><Text style={styles.value}>{studentData.location || 'N/A'}</Text></View>
         </View>
 
         {/* Academic Assessment Results */}

@@ -17,7 +17,7 @@ interface StudentDetailsForPdf {
   gender?: string;
   homeLanguage?: string;
   school?: string;
-  place?: string;
+  location?: string;
   chronologicalAge?: string;
   mathsAge?: { academicAge: string | null; difference: string | null; isDeficit: boolean; lastAssessmentDate?: string | null };
   spellingAge?: { academicAge: string | null; difference: string | null; isDeficit: boolean; lastAssessmentDate?: string | null };

@@ -98,6 +98,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       date_of_birth, 
       home_language,
       school_id,
+      location,
       occupational_therapy,
       speech_language_therapy,
       medication,
@@ -659,7 +660,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 </div>
                 
                 <div>
-                  <div className="text-sm text-gray-500 mb-1">Place</div>
+                  <div className="text-sm text-gray-500 mb-1">Location</div>
                   <div className="font-medium">{
                     // Access location safely with proper type checking
                     (combinedStudentData && 'location' in combinedStudentData && combinedStudentData.location) || 
@@ -830,11 +831,13 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
+                                        value === "discharged" ? "Discharged" :
                                         value.charAt(0).toUpperCase() + value.slice(1);
                     
                     const bgColor = value === "none" ? "bg-gray-50" : 
                                   value === "recommended" ? "bg-orange-50" : 
                                   value === "attending" ? "bg-green-50" : 
+                                  value === "discharged" ? "bg-red-50" :
                                   "bg-gray-50";
                     
                     return (
@@ -851,11 +854,13 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
+                                        value === "discharged" ? "Discharged" :
                                         value.charAt(0).toUpperCase() + value.slice(1);
                     
                     const bgColor = value === "none" ? "bg-gray-50" : 
                                   value === "recommended" ? "bg-orange-50" : 
                                   value === "attending" ? "bg-green-50" : 
+                                  value === "discharged" ? "bg-red-50" :
                                   "bg-gray-50";
                     
                     return (
@@ -872,11 +877,13 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
+                                        value === "discharged" ? "Discharged" :
                                         value.charAt(0).toUpperCase() + value.slice(1);
                     
                     const bgColor = value === "none" ? "bg-gray-50" : 
                                   value === "recommended" ? "bg-orange-50" : 
                                   value === "attending" ? "bg-green-50" : 
+                                  value === "discharged" ? "bg-red-50" :
                                   "bg-gray-50";
                     
                     return (
@@ -893,11 +900,13 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                     const displayValue = value === "none" ? "None" : 
                                         value === "recommended" ? "Recommended" : 
                                         value === "attending" ? "Attending" : 
+                                        value === "discharged" ? "Discharged" :
                                         value.charAt(0).toUpperCase() + value.slice(1);
                     
                     const bgColor = value === "none" ? "bg-gray-50" : 
                                   value === "recommended" ? "bg-orange-50" : 
                                   value === "attending" ? "bg-green-50" : 
+                                  value === "discharged" ? "bg-red-50" :
                                   "bg-gray-50";
                     
                     return (

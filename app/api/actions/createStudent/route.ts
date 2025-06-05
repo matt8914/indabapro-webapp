@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const gender = formData.get('gender') as string;
     const classId = formData.get('classId') as string;
     const dateOfBirth = formData.get('dateOfBirth') as string;
-    const place = formData.get('place') as string;
+    const location = formData.get('location') as string;
     const homeLanguage = formData.get('homeLanguage') as string || 'english'; // Default to English
     const notes = formData.get('specialNeeds') as string;
     const occupationalTherapy = formData.get('occupationalTherapy') as string || 'none';
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Validate required fields
-    if (!firstName || !lastName || !gender || !studentIdInput || !place || !dateOfBirth || !homeLanguage) {
+    if (!firstName || !lastName || !gender || !studentIdInput || !location || !dateOfBirth || !homeLanguage) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         // Only include optional fields if they have values
         ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
         ...(notes ? { notes } : {}),
-        ...(place ? { location: place } : {}),
+        ...(location ? { location } : {}),
         ...(occupationalTherapy ? { occupational_therapy: occupationalTherapy } : {}),
         ...(speechTherapy ? { speech_language_therapy: speechTherapy } : {}),
         ...(medication ? { medication } : {}),
