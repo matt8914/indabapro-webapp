@@ -637,7 +637,7 @@ export function AssessmentRecordTab({
       )}
     
       {!showScoreForm ? (
-        <Card className="bg-white overflow-hidden shadow-sm rounded-lg px-6 pt-6 pb-16">
+        <Card className="bg-white shadow-sm rounded-lg px-6 pt-6 pb-16">
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold">Assessment Details</h2>
