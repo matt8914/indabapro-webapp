@@ -38,6 +38,7 @@ interface StudentData {
   gender: string;
   date_of_birth?: string | null;
   home_language: string;
+  notes?: string;
   occupational_therapy?: string;
   speech_language_therapy?: string;
   medication?: string;
@@ -91,15 +92,16 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
   const { data: studentData, error: studentError } = await supabase
     .from('students')
     .select(`
-      id, 
+      id,
       student_id,
-      first_name, 
-      last_name, 
-      gender, 
-      date_of_birth, 
+      first_name,
+      last_name,
+      gender,
+      date_of_birth,
       home_language,
       school_id,
       location,
+      notes,
       occupational_therapy,
       speech_language_therapy,
       medication,
@@ -367,6 +369,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     homeLanguage: "English",
     dateOfBirth: "2018-07-22",
     age: "6 years, 7 months",
+    notes: "",
     specialNeeds: {
       occupationalTherapy: "None",
       speechTherapy: "None",
@@ -528,7 +531,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       specialNeeds: {
         occupationalTherapy: combinedStudentData.occupational_therapy || "None",
         speechTherapy: combinedStudentData.speech_language_therapy || "None",
-        medication: combinedStudentData.medication || "None",
+        medication: combinedStudentData.medication || "No medication",
         counselling: combinedStudentData.counselling || "None"
       },
       healthInfo: {
@@ -588,11 +591,12 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                       (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'name' in combinedStudentData.schools) ? 
                       (combinedStudentData.schools as any).name : 
                       studentInfo.school),
-                    place: (combinedStudentData && 'location' in combinedStudentData && combinedStudentData.location) || 
+                    location: (combinedStudentData && 'location' in combinedStudentData && combinedStudentData.location) || 
                       (combinedStudentData && combinedStudentData.schools && 
                       (typeof combinedStudentData.schools === 'object' && combinedStudentData.schools !== null && 'Location' in combinedStudentData.schools) ?
                       (combinedStudentData.schools as any).Location : 
                       studentInfo.place),
+                    notes: (combinedStudentData as any)?.notes || studentInfo.notes || "",
                     chronologicalAge: combinedStudentData?.date_of_birth ? 
                       (() => {
                         const chrono = calculateChronologicalAge(combinedStudentData.date_of_birth, currentDate, 'months');
@@ -843,6 +847,18 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
               <div className="mt-8 pt-6 border-t border-gray-100">
                 <h3 className="text-base font-medium mb-4">Special Needs/Concerns</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Special Needs/Notes */}
+                  {(() => {
+                    const notes = (combinedStudentData as any)?.notes || studentInfo.notes || "";
+                    
+                    return (
+                      <div className="md:col-span-2 lg:col-span-4 p-3 rounded bg-blue-50">
+                        <div className="text-sm text-gray-500 mb-1">Special Needs/Notes</div>
+                        <div className="font-medium">{notes || "None"}</div>
+                      </div>
+                    );
+                  })()}
+                  
                   {/* Occupational */}
                   {(() => {
                     const value = combinedStudentData?.occupational_therapy || studentInfo.specialNeeds.occupationalTherapy;
@@ -892,16 +908,23 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                   {/* Medication */}
                   {(() => {
                     const value = combinedStudentData?.medication || studentInfo.specialNeeds.medication;
-                    const displayValue = value === "none" ? "None" : 
-                                        value === "recommended" ? "Recommended" : 
-                                        value === "attending" ? "Attending" : 
-                                        value === "discharged" ? "Discharged" :
+                    const displayValue = value === "no_medication" ? "No medication" : 
+                                        value === "on_prescribed_medication" ? "On Prescribed Medication" : 
+                                        value === "natural_homeopathic_support" ? "Natural / Homeopathic Support" : 
+                                        value === "not_disclosed" ? "Not Disclosed" :
+                                        value === "other" ? "Other" :
+                                        // Handle old values for backward compatibility
+                                        value === "none" ? "No medication" : 
+                                        value === "recommended" ? "On Prescribed Medication" : 
+                                        value === "attending" ? "On Prescribed Medication" : 
+                                        value === "discharged" ? "No medication" :
                                         value.charAt(0).toUpperCase() + value.slice(1);
                     
-                    const bgColor = value === "none" ? "bg-gray-50" : 
-                                  value === "recommended" ? "bg-orange-50" : 
-                                  value === "attending" ? "bg-green-50" : 
-                                  value === "discharged" ? "bg-red-50" :
+                    const bgColor = value === "no_medication" || value === "none" || value === "discharged" ? "bg-gray-50" : 
+                                  value === "on_prescribed_medication" || value === "recommended" || value === "attending" ? "bg-blue-50" : 
+                                  value === "natural_homeopathic_support" ? "bg-green-50" : 
+                                  value === "not_disclosed" ? "bg-yellow-50" :
+                                  value === "other" ? "bg-purple-50" :
                                   "bg-gray-50";
                     
                     return (

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const notes = formData.get('specialNeeds') as string;
     const occupationalTherapy = formData.get('occupationalTherapy') as string || 'none';
     const speechTherapy = formData.get('speechTherapy') as string || 'none';
-    const medication = formData.get('medication') as string || 'none';
+    const medication = formData.get('medication') as string || 'no_medication';
     const counselling = formData.get('counselling') as string || 'none';
     const eyesight = formData.get('eyesight') as string || 'none';
     const speech = formData.get('speech') as string || 'none';

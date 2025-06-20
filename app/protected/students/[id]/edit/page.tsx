@@ -74,7 +74,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
     specialNeeds: {
       occupationalTherapy: "none",
       speechTherapy: "none",
-      medication: "none",
+      medication: "no_medication",
       counselling: "none"
     },
     healthInfo: {
@@ -204,7 +204,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
             specialNeeds: {
               occupationalTherapy: studentResult.occupational_therapy || "none",
               speechTherapy: studentResult.speech_language_therapy || "none",
-              medication: studentResult.medication || "none",
+              medication: studentResult.medication || "no_medication",
               counselling: studentResult.counselling || "none"
             },
             healthInfo: {
@@ -309,6 +309,7 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
       formData.append('location', studentInfo.location);
       formData.append('dateOfBirth', studentInfo.dateOfBirth);
       formData.append('homeLanguage', studentInfo.homeLanguage);
+      formData.append('notes', studentInfo.notes);
       formData.append('occupationalTherapy', studentInfo.specialNeeds.occupationalTherapy);
       formData.append('speechTherapy', studentInfo.specialNeeds.speechTherapy);
       formData.append('medication', studentInfo.specialNeeds.medication);
@@ -538,6 +539,18 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
           </div>
           
           <div className="space-y-2">
+            <Label htmlFor="specialNeeds">Special Needs/Notes</Label>
+            <Input 
+              id="specialNeeds" 
+              name="specialNeeds"
+              placeholder="Any special needs or notes" 
+              value={studentInfo.notes}
+              onChange={(e) => setStudentInfo({...studentInfo, notes: e.target.value})}
+              className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20"
+            />
+          </div>
+          
+          <div className="space-y-2">
             <Label>Special Needs/Concerns</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -595,13 +608,14 @@ export default function EditStudentPage({ params }: { params: Promise<{ id: stri
                   })}
                 >
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
-                    <SelectValue placeholder="Select Status" />
+                    <SelectValue placeholder="Select Medication Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
-                    <SelectItem value="discharged">Discharged</SelectItem>
+                    <SelectItem value="no_medication">No medication</SelectItem>
+                    <SelectItem value="on_prescribed_medication">On Prescribed Medication</SelectItem>
+                    <SelectItem value="natural_homeopathic_support">Natural / Homeopathic Support</SelectItem>
+                    <SelectItem value="not_disclosed">Not Disclosed</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

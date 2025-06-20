@@ -14,6 +14,7 @@ interface StudentDetailsForPdf {
   homeLanguage?: string;
   school?: string;
   location?: string;
+  notes?: string;
   // Academic ages
   chronologicalAge?: string;
   mathsAge?: { academicAge: string | null; difference: string | null; isDeficit: boolean; lastAssessmentDate?: string | null };
@@ -212,7 +213,7 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
           <View style={styles.gridItem}><Text style={styles.label}>Class</Text><Text style={styles.value}>{studentData.className || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>{studentData.teacherLabel || 'Teacher'}</Text><Text style={styles.value}>{studentData.teacher || 'N/A'}</Text></View>
           <View style={styles.gridItem}><Text style={styles.label}>School</Text><Text style={styles.value}>{studentData.school || 'N/A'}</Text></View>
-          <View style={styles.gridItem}><Text style={styles.label}>Place</Text><Text style={styles.value}>{studentData.location || 'N/A'}</Text></View>
+          <View style={styles.gridItem}><Text style={styles.label}>Location</Text><Text style={styles.value}>{studentData.location || 'N/A'}</Text></View>
         </View>
 
         {/* Academic Assessment Results */}
@@ -240,12 +241,34 @@ const StudentPdfDocument: React.FC<StudentPdfDocumentProps> = ({ studentData, as
           </View>
         </View>
 
+        {/* Special Needs/Notes Section */}
+        {studentData.notes && studentData.notes.trim() && (
+          <>
+            <Text style={styles.sectionTitle}>Special Needs/Notes</Text>
+            <View style={[styles.gridItemFull, { backgroundColor: '#F9FAFB', padding: 10, borderRadius: 4 }]}>
+              <Text style={styles.value}>{studentData.notes}</Text>
+            </View>
+          </>
+        )}
+
         {/* Special Needs & Health Information (Optional - keep it brief) */}
         <Text style={styles.sectionTitle}>Additional Information</Text>
         <View style={styles.gridContainer}>
             <View style={styles.gridItem}><Text style={styles.label}>Occupational Therapy</Text><Text style={styles.value}>{studentData.occupationalTherapy || 'N/A'}</Text></View>
             <View style={styles.gridItem}><Text style={styles.label}>Speech Therapy</Text><Text style={styles.value}>{studentData.speechTherapy || 'N/A'}</Text></View>
-            <View style={styles.gridItem}><Text style={styles.label}>Medication</Text><Text style={styles.value}>{studentData.medication || 'N/A'}</Text></View>
+            <View style={styles.gridItem}><Text style={styles.label}>Medication</Text><Text style={styles.value}>{
+              studentData.medication === 'no_medication' ? 'No medication' :
+              studentData.medication === 'on_prescribed_medication' ? 'On Prescribed Medication' :
+              studentData.medication === 'natural_homeopathic_support' ? 'Natural / Homeopathic Support' :
+              studentData.medication === 'not_disclosed' ? 'Not Disclosed' :
+              studentData.medication === 'other' ? 'Other' :
+              // Handle old values for backward compatibility
+              studentData.medication === 'none' ? 'No medication' :
+              studentData.medication === 'recommended' ? 'On Prescribed Medication' :
+              studentData.medication === 'attending' ? 'On Prescribed Medication' :
+              studentData.medication === 'discharged' ? 'No medication' :
+              studentData.medication || 'N/A'
+            }</Text></View>
             <View style={styles.gridItem}><Text style={styles.label}>Counselling</Text><Text style={styles.value}>{studentData.counselling || 'N/A'}</Text></View>
             <View style={styles.gridItem}><Text style={styles.label}>Eyesight</Text><Text style={styles.value}>{studentData.eyesight || 'N/A'}</Text></View>
             <View style={styles.gridItem}><Text style={styles.label}>Speech (Concern)</Text><Text style={styles.value}>{studentData.speech || 'N/A'}</Text></View>

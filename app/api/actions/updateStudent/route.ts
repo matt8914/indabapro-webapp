@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const dateOfBirth = formData.get('dateOfBirth') as string;
     const location = formData.get('location') as string;
     const homeLanguage = formData.get('homeLanguage') as string;
+    const notes = formData.get('notes') as string;
     const occupationalTherapy = formData.get('occupationalTherapy') as string;
     const speechTherapy = formData.get('speechTherapy') as string;
     const medication = formData.get('medication') as string;
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
         school_id: schoolId,
         location,
         home_language: homeLanguage,
+        notes: notes,
         occupational_therapy: occupationalTherapy,
         speech_language_therapy: speechTherapy,
         medication: medication,

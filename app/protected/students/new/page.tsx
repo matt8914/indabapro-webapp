@@ -446,15 +446,16 @@ export default function NewStudentPage() {
               
               <div className="space-y-2">
                 <Label htmlFor="medication">Medication</Label>
-                <Select name="medication" defaultValue="none">
+                <Select name="medication" defaultValue="no_medication">
                   <SelectTrigger className="focus:border-[#f6822d] focus:ring focus:ring-[#f6822d] focus:ring-opacity-20">
-                    <SelectValue placeholder="Select Status" />
+                    <SelectValue placeholder="Select Medication Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="attending">Attending</SelectItem>
-                    <SelectItem value="discharged">Discharged</SelectItem>
+                    <SelectItem value="no_medication">No medication</SelectItem>
+                    <SelectItem value="on_prescribed_medication">On Prescribed Medication</SelectItem>
+                    <SelectItem value="natural_homeopathic_support">Natural / Homeopathic Support</SelectItem>
+                    <SelectItem value="not_disclosed">Not Disclosed</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
