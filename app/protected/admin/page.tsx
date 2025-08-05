@@ -143,6 +143,7 @@ export default async function AdminDashboardPage() {
                     <div key={user.userId} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
                         <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
+                        <p className="text-sm text-gray-500 mb-1">{user.email}</p>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Badge variant={user.role === 'teacher' ? 'default' : user.role === 'therapist' ? 'secondary' : 'outline'}>
                             {user.role === 'teacher' ? 'Remedial Teacher' : 

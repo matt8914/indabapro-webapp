@@ -25,6 +25,7 @@ export interface DashboardStats {
       userId: string;
       firstName: string;
       lastName: string;
+      email: string;
       role: string;
       schoolName: string | null;
       totalClasses: number;
@@ -89,6 +90,7 @@ export async function getDashboardData(): Promise<DashboardStats> {
       id,
       first_name,
       last_name,
+      email,
       role,
       school_id,
       schools(name)
@@ -151,6 +153,7 @@ export async function getDashboardData(): Promise<DashboardStats> {
       userId: user.id,
       firstName: user.first_name,
       lastName: user.last_name,
+      email: user.email,
       role: user.role,
       schoolName: (user.schools as any)?.name || null,
       totalClasses: userClasses.length,
