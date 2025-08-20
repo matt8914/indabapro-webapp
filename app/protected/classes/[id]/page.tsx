@@ -171,6 +171,8 @@ export default async function ClassDetailsPage({
       )
     `)
     .eq('class_id', id)
+    .order('students(first_name)', { ascending: true })
+    .order('students(last_name)', { ascending: true })
     .returns<EnrollmentWithStudent[]>(); // Specify the return type
 
   if (enrollmentsError) {
@@ -289,8 +291,18 @@ export default async function ClassDetailsPage({
     };
   }).filter(student => student !== null) as StudentForTable[] || [];
 
-  // Sort students alphabetically by name
-  studentsForTable.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort students alphabetically by first name
+  studentsForTable.sort((a, b) => {
+    const firstNameA = a.name.split(' ')[0].toLowerCase();
+    const firstNameB = b.name.split(' ')[0].toLowerCase();
+    if (firstNameA !== firstNameB) {
+      return firstNameA.localeCompare(firstNameB);
+    }
+    // If first names are the same, sort by surname
+    const surnameA = a.name.split(' ').slice(1).join(' ').toLowerCase();
+    const surnameB = b.name.split(' ').slice(1).join(' ').toLowerCase();
+    return surnameA.localeCompare(surnameB);
+  });
 
   // Format teacher name and determine class type  
   // First check if it's a therapist class and use therapist_name

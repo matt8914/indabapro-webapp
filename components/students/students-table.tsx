@@ -170,7 +170,7 @@ export function StudentsTable({ students: initialStudents, showClassColumn = tru
     const academicAgeValue = parseFloat(ageData.academicAge);
     const years = Math.floor(academicAgeValue);
     const months = Math.round((academicAgeValue - years) * 12);
-    const formattedAge = `${years}y ${months}m`;
+    const formattedAge = `${years} years ${months} months`;
     
     return (
       <div className="flex items-center">
@@ -197,10 +197,12 @@ export function StudentsTable({ students: initialStudents, showClassColumn = tru
   const formatChronologicalAge = (age: string) => {
     if (age === 'N/A') return age;
     
-    const ageValue = parseFloat(age);
-    const years = Math.floor(ageValue);
-    const months = Math.round((ageValue - years) * 12);
-    return `${years}y ${months}m`;
+    const parts = age.split('.');
+    if (parts.length !== 2) return age;
+    
+    const years = parseInt(parts[0], 10);
+    const months = parseInt(parts[1], 10);
+    return `${years} years ${months} months`;
   };
   
   return (

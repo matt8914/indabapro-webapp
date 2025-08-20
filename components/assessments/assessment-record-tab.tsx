@@ -193,7 +193,9 @@ export function AssessmentRecordTab({
           const { data: studentData, error: studentError } = await supabase
             .from('students')
             .select('id, first_name, last_name, student_id, date_of_birth')
-            .in('id', enrolledStudentIds);
+            .in('id', enrolledStudentIds)
+            .order('first_name', { ascending: true })
+            .order('last_name', { ascending: true });
             
           if (studentError) {
             console.error('Error fetching students:', studentError);

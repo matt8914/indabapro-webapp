@@ -44,6 +44,19 @@ export function SearchedStudentsTable({ students, showClassColumn = true }: Sear
       );
     }
     
+    // Sort by first name
+    result.sort((a, b) => {
+      const nameA = a.name.split(' ')[0].toLowerCase();
+      const nameB = b.name.split(' ')[0].toLowerCase();
+      if (nameA !== nameB) {
+        return nameA.localeCompare(nameB);
+      }
+      // If first names are the same, sort by surname
+      const surnameA = a.name.split(' ').slice(1).join(' ').toLowerCase();
+      const surnameB = b.name.split(' ').slice(1).join(' ').toLowerCase();
+      return surnameA.localeCompare(surnameB);
+    });
+    
     setFilteredStudents(result);
   }, [students, searchTerm]);
 

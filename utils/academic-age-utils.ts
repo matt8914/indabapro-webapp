@@ -908,12 +908,8 @@ export function convertTenthsToYearsMonths(ageInTenths: string): string {
   
   const months = monthsMap[tenths] || 0;
   
-  // Format the result
-  if (months === 0) {
-    return `${years} years`;
-  } else {
-    return `${years} years ${months} months`;
-  }
+  // Format the result (always show months)
+  return `${years} years ${months} months`;
 }
 
 /**
@@ -942,12 +938,8 @@ export function convertSpellingAgeToYearsMonths(spellingAge: string): string {
   const years = parseInt(parts[0], 10);
   const months = parseInt(parts[1], 10);
 
-  // Format the result
-  if (months === 0) {
-    return `${years} years`;
-  } else {
-    return `${years} years ${months} months`;
-  }
+  // Format the result (always show months)
+  return `${years} years ${months} months`;
 }
 
 /**
@@ -1066,20 +1058,35 @@ export function calculateChronologicalAge(dateOfBirth: string, testDate: string,
   const dob = new Date(dateOfBirth);
   const test = new Date(testDate);
   
-  // Calculate difference in milliseconds
-  const diffMs = test.getTime() - dob.getTime();
+  // Calculate age more accurately by working with actual dates
+  let years = test.getFullYear() - dob.getFullYear();
+  let months = test.getMonth() - dob.getMonth();
   
-  // Convert to years
-  const diffYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+  // Adjust for cases where the birthday hasn't occurred yet this year
+  if (months < 0 || (months === 0 && test.getDate() < dob.getDate())) {
+    years--;
+    months += 12;
+  }
   
-  // Get whole years
-  const years = Math.floor(diffYears);
+  // Adjust for cases where we're in the same month but before the birthday
+  if (months === 0 && test.getDate() < dob.getDate()) {
+    months = 11;
+  } else if (test.getDate() < dob.getDate()) {
+    months--;
+    if (months < 0) {
+      months = 11;
+      years--;
+    }
+  }
   
-  // Get remaining months
-  const months = Math.floor((diffYears - years) * 12);
+  // Ensure months is between 0-11
+  if (months >= 12) {
+    years += Math.floor(months / 12);
+    months = months % 12;
+  }
   
   if (format === 'months') {
-    // Return in years.months format (e.g., 7.3 for 7 years 3 months)
+    // Return in years.months format (e.g., 7.03 for 7 years 3 months)
     return `${years}.${months < 10 ? '0' + months : months}`;
   } else {
     // Return in years.tenths format (approximate)
@@ -1220,11 +1227,8 @@ export function convertReadingAgeToYearsMonths(readingAge: string): string {
     // This is in months format (e.g., 7.10 for 7 years 10 months)
     const months = parseInt(secondPart, 10);
     
-    if (months === 0) {
-      return `${years} years`;
-    } else {
-      return `${years} years ${months} months`;
-    }
+    // Always show months
+    return `${years} years ${months} months`;
   } else {
     // This is in tenths format, use the existing conversion
     return convertTenthsToYearsMonths(readingAge);

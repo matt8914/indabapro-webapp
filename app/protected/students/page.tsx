@@ -71,7 +71,9 @@ export default async function StudentsPage() {
         schools(name)
       `)
       .in('id', studentIds)
-      .eq('is_archived', false);
+      .eq('is_archived', false)
+      .order('first_name', { ascending: true })
+      .order('last_name', { ascending: true });
     
     studentsData = studentsResult.data;
     studentsError = studentsResult.error;
@@ -237,8 +239,12 @@ export default async function StudentsPage() {
     };
   }) || [];
 
-  // Sort students alphabetically by name
-  students.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort students alphabetically by surname (last name)
+  students.sort((a, b) => {
+    const surnameA = a.name.split(' ').pop() || '';
+    const surnameB = b.name.split(' ').pop() || '';
+    return surnameA.localeCompare(surnameB);
+  });
 
   // Get unique classes for filter dropdown
   const uniqueClasses: string[] = [];

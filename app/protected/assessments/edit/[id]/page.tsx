@@ -102,7 +102,8 @@ export default async function EditAssessmentPage({ params }: { params: Promise<{
       .from("students")
       .select("id, first_name, last_name, student_id, date_of_birth")
       .in("id", studentIds)
-      .order("last_name");
+      .order("first_name", { ascending: true })
+      .order("last_name", { ascending: true });
 
     if (studentsError) {
       console.error("Error fetching students:", studentsError);

@@ -316,7 +316,7 @@ export function AcademicAgeAssessment({
     return `${years} years ${months} months`;
   };
   
-  // Format age difference for display
+  // Format age difference for display (always show years and months)
   const formatAgeDifference = (ageDifferenceMonths: string): string => {
     if (!ageDifferenceMonths || ageDifferenceMonths === "Cannot calculate") return ageDifferenceMonths;
     
@@ -329,17 +329,10 @@ export function AcademicAgeAssessment({
     const years = parseInt(parts[0], 10);
     const months = parseInt(parts[1], 10);
     
-    if (years === 0 && months === 0) return "0";
+    if (years === 0 && months === 0) return "0 years 0 months";
     
-    let result = "";
-    if (years > 0) {
-      result += `${years} year${years !== 1 ? 's' : ''}`;
-    }
-    
-    if (months > 0) {
-      if (result) result += ' ';
-      result += `${months} month${months !== 1 ? 's' : ''}`;
-    }
+    // Always show both years and months in consistent format
+    const result = `${years} years ${months} months`;
     
     return isNegative ? `-${result}` : result;
   };
@@ -387,7 +380,15 @@ export function AcademicAgeAssessment({
                 </th>
                 <th className="py-4 px-2 text-center font-medium">
                   <div className="text-sm">Chronological Age</div>
+                  <div className="text-xs text-gray-500">(Years.Tenths)</div>
+                </th>
+                <th className="py-4 px-2 text-center font-medium">
+                  <div className="text-sm">Chronological Age</div>
                   <div className="text-xs text-gray-500">(Years & Months)</div>
+                </th>
+                <th className="py-4 px-2 text-center font-medium">
+                  <div className="text-sm">Difference</div>
+                  <div className="text-xs text-gray-500">(Years.Tenths)</div>
                 </th>
                 <th className="py-4 px-2 text-center font-medium">
                   <div className="text-sm">Difference</div>
@@ -425,8 +426,18 @@ export function AcademicAgeAssessment({
                       ) : ""}
                     </td>
                     <td className="py-2 px-2 text-center">
+                      {scores[student.id]?.chronologicalAge || ""}
+                    </td>
+                    <td className="py-2 px-2 text-center">
                       {scores[student.id]?.chronologicalAgeMonths ? 
                         formatChronologicalAge(scores[student.id].chronologicalAgeMonths) : ""}
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      {scores[student.id]?.ageDifference ? (
+                        <span className={`font-medium ${scores[student.id].isDeficit ? 'text-red-600' : 'text-green-600'}`}>
+                          {scores[student.id].ageDifference}
+                        </span>
+                      ) : ""}
                     </td>
                     <td className="py-2 px-2 text-center">
                       {scores[student.id]?.ageDifferenceMonths ? (
@@ -439,7 +450,7 @@ export function AcademicAgeAssessment({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-500">
+                  <td colSpan={8} className="py-6 text-center text-gray-500">
                     No students found for this class
                   </td>
                 </tr>

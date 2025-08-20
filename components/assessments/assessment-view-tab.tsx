@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Calendar, BookOpen, ChevronDown, ChevronRight, FileText, Info, Trash2, MoreVertical, Edit, RefreshCw } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { convertTenthsToYearsMonths } from "@/utils/academic-age-utils";
+import { convertTenthsToYearsMonths, calculateChronologicalAge, calculateAgeDifference, isDeficit } from "@/utils/academic-age-utils";
 import { calculateCognitiveReadinessScore } from "@/utils/assessment-utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -182,7 +182,16 @@ export function AssessmentViewTab({
       const academicAgeType = getAcademicAgeType(assessmentTypeName);
       
       if (isAcademicAge && academicAgeType) {
-        // Fetch academic age data with explicit type casting
+        // First, fetch the session to get the test date
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('assessment_sessions')
+          .select('test_date')
+          .eq('id', sessionId)
+          .single();
+          
+        if (sessionError) throw sessionError;
+        
+        // Then fetch academic age data
         const { data: ageData, error: ageError } = await supabase
           .from('student_academic_ages')
           .select(`
@@ -193,10 +202,12 @@ export function AssessmentViewTab({
             chronological_age,
             age_difference,
             is_deficit,
-            students(id, first_name, last_name)
+            students(id, first_name, last_name, date_of_birth)
           `)
           .eq('session_id', sessionId)
-          .eq('test_type', academicAgeType);
+          .eq('test_type', academicAgeType)
+          .order('students(first_name)', { ascending: true })
+          .order('students(last_name)', { ascending: true });
           
         if (ageError) throw ageError;
         
@@ -208,15 +219,44 @@ export function AssessmentViewTab({
             const studentId = data.student_id;
             const studentName = data.students ? `${data.students.first_name} ${data.students.last_name}` : 'Unknown';
             
+            // Recalculate chronological age using actual birth date and test date
+            let recalculatedChronologicalAge = data.chronological_age; // fallback to stored value
+            let recalculatedAgeDifference = data.age_difference; // fallback to stored value
+            let recalculatedIsDeficit = data.is_deficit; // fallback to stored value
+            
+            if (data.students?.date_of_birth && sessionData?.test_date) {
+              // Calculate chronological age in months format (like the Record Assessment page)
+              const chronologicalAgeMonths = calculateChronologicalAge(
+                data.students.date_of_birth, 
+                sessionData.test_date,
+                'months'
+              );
+              
+              // Also calculate in tenths format for age difference calculation
+              const chronologicalAgeTenths = calculateChronologicalAge(
+                data.students.date_of_birth, 
+                sessionData.test_date
+              );
+              
+              // Store the months format for display
+              recalculatedChronologicalAge = chronologicalAgeMonths;
+              
+              // Recalculate age difference and deficit status based on corrected chronological age
+              if (data.academic_age) {
+                recalculatedAgeDifference = calculateAgeDifference(data.academic_age, chronologicalAgeTenths);
+                recalculatedIsDeficit = isDeficit(data.academic_age, chronologicalAgeTenths);
+              }
+            }
+            
             studentData[studentId] = {
               name: studentName,
               scores: {},
               academicAges: {
                 rawScore: data.raw_score,
                 academicAge: data.academic_age,
-                chronologicalAge: data.chronological_age,
-                ageDifference: data.age_difference,
-                isDeficit: data.is_deficit
+                chronologicalAge: recalculatedChronologicalAge,
+                ageDifference: recalculatedAgeDifference,
+                isDeficit: recalculatedIsDeficit
               }
             };
           });
@@ -241,7 +281,9 @@ export function AssessmentViewTab({
             students(id, first_name, last_name),
             assessment_components(id, name)
           `)
-          .eq('session_id', sessionId);
+          .eq('session_id', sessionId)
+          .order('students(first_name)', { ascending: true })
+          .order('students(last_name)', { ascending: true });
           
         if (error) throw error;
         
@@ -302,6 +344,45 @@ export function AssessmentViewTab({
       const indexB = componentOrder.indexOf(b[1].componentName);
       return indexA - indexB;
     });
+  };
+
+  // Function to get students sorted alphabetically by first name
+  const getOrderedStudents = (students: Record<string, StudentData>): [string, StudentData][] => {
+    return Object.entries(students).sort((a, b) => {
+      // Extract first name from full name
+      const nameA = a[1].name;
+      const nameB = b[1].name;
+      
+      // Split names - first word is first name
+      const partsA = nameA.split(' ');
+      const partsB = nameB.split(' ');
+      
+      const firstNameA = partsA[0].toLowerCase();
+      const firstNameB = partsB[0].toLowerCase();
+      
+      // Compare first names first
+      if (firstNameA !== firstNameB) {
+        return firstNameA.localeCompare(firstNameB);
+      }
+      
+      // If first names are the same, compare surnames
+      const lastNameA = partsA.slice(1).join(' ').toLowerCase();
+      const lastNameB = partsB.slice(1).join(' ').toLowerCase();
+      return lastNameA.localeCompare(lastNameB);
+    });
+  };
+
+  // Format chronological age for display (always show months)
+  const formatChronologicalAge = (chronologicalAgeMonths: string): string => {
+    if (!chronologicalAgeMonths) return "";
+    
+    const parts = chronologicalAgeMonths.split('.');
+    if (parts.length !== 2) return chronologicalAgeMonths;
+    
+    const years = parseInt(parts[0], 10);
+    const months = parseInt(parts[1], 10) || 0; // Ensure months defaults to 0 if undefined
+    
+    return `${years} years ${months} months`;
   };
 
   // Function to check if this is an ASB assessment
@@ -539,15 +620,17 @@ export function AssessmentViewTab({
                               <thead>
                                 <tr className="bg-gray-50 border-b">
                                   <th className="py-2 px-4 text-left text-sm font-medium text-gray-500">Student</th>
-                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Raw Score</th>
-                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age</th>
-                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age (Y&M)</th>
-                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age</th>
-                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Raw Score (0-42)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age (Years.Tenths)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age (Years & Months)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age (Years.Tenths)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age (Years & Months)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference (Years.Tenths)</th>
+                                  <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference (Years & Months)</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {Object.entries(sessionDetails.students).map(([studentId, student]) => (
+                                {getOrderedStudents(sessionDetails.students).map(([studentId, student]) => (
                                   <tr key={studentId} className="border-b">
                                     <td className="py-3 px-4 text-sm">{student.name}</td>
                                     <td className="py-3 px-4 text-center text-sm">{student.academicAges?.rawScore}</td>
@@ -555,7 +638,44 @@ export function AssessmentViewTab({
                                     <td className="py-3 px-4 text-center text-sm">
                                       {student.academicAges ? convertTenthsToYearsMonths(student.academicAges.academicAge) : ''}
                                     </td>
-                                    <td className="py-3 px-4 text-center text-sm">{student.academicAges?.chronologicalAge}</td>
+                                    <td className="py-3 px-4 text-center text-sm">
+                                      {student.academicAges?.chronologicalAge ? (() => {
+                                        // Convert from months format (7.03) back to tenths format (7.3)
+                                        const monthsFormat = student.academicAges.chronologicalAge;
+                                        const parts = monthsFormat.split('.');
+                                        if (parts.length !== 2) return monthsFormat;
+                                        const years = parseInt(parts[0], 10);
+                                        const months = parseInt(parts[1], 10);
+                                        // Convert months to tenths approximation
+                                        let tenths = 0;
+                                        if (months === 1) tenths = 1;
+                                        else if (months === 2) tenths = 2;
+                                        else if (months === 3 || months === 4) tenths = 3;
+                                        else if (months === 5) tenths = 4;
+                                        else if (months === 6) tenths = 5;
+                                        else if (months === 7) tenths = 6;
+                                        else if (months === 8) tenths = 7;
+                                        else if (months === 9 || months === 10) tenths = 8;
+                                        else if (months === 11) tenths = 9;
+                                        return `${years}.${tenths}`;
+                                      })() : ''}
+                                    </td>
+                                    <td className="py-3 px-4 text-center text-sm">
+                                      {student.academicAges?.chronologicalAge ? formatChronologicalAge(student.academicAges.chronologicalAge) : ''}
+                                    </td>
+                                    <td className="py-3 px-4 text-center text-sm">
+                                      {student.academicAges?.ageDifference && (
+                                        <Badge
+                                          className={
+                                            student.academicAges.isDeficit
+                                              ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                              : "bg-green-100 text-green-800 hover:bg-green-100"
+                                          }
+                                        >
+                                          {student.academicAges.ageDifference}
+                                        </Badge>
+                                      )}
+                                    </td>
                                     <td className="py-3 px-4 text-center text-sm">
                                       {student.academicAges?.ageDifference && (
                                         <Badge
@@ -599,7 +719,7 @@ export function AssessmentViewTab({
                                 </tr>
                               </thead>
                               <tbody>
-                                {Object.entries(sessionDetails.students).map(([studentId, student]) => (
+                                {getOrderedStudents(sessionDetails.students).map(([studentId, student]) => (
                                   <tr key={studentId} className="border-b">
                                     <td className="py-3 px-4 text-sm">{student.name}</td>
                                     {/* Scores for Each Component */}
