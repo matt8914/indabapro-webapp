@@ -487,8 +487,8 @@ export function AssessmentRecordTab({
             test_type: academicAgeType as 'maths' | 'reading' | 'spelling',
             raw_score: parseInt(data.rawScore, 10),
             academic_age: data.academicAge,
-            chronological_age: data.chronologicalAge,
-            age_difference: data.ageDifference,
+            chronological_age: data.chronologicalAgeMonths,
+            age_difference: data.ageDifferenceMonths,
             is_deficit: data.isDeficit
           });
         }

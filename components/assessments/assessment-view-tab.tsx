@@ -219,34 +219,10 @@ export function AssessmentViewTab({
             const studentId = data.student_id;
             const studentName = data.students ? `${data.students.first_name} ${data.students.last_name}` : 'Unknown';
             
-            // Recalculate chronological age using actual birth date and test date
-            let recalculatedChronologicalAge = data.chronological_age; // fallback to stored value
-            let recalculatedAgeDifference = data.age_difference; // fallback to stored value
-            let recalculatedIsDeficit = data.is_deficit; // fallback to stored value
-            
-            if (data.students?.date_of_birth && sessionData?.test_date) {
-              // Calculate chronological age in months format (like the Record Assessment page)
-              const chronologicalAgeMonths = calculateChronologicalAge(
-                data.students.date_of_birth, 
-                sessionData.test_date,
-                'months'
-              );
-              
-              // Also calculate in tenths format for age difference calculation
-              const chronologicalAgeTenths = calculateChronologicalAge(
-                data.students.date_of_birth, 
-                sessionData.test_date
-              );
-              
-              // Store the months format for display
-              recalculatedChronologicalAge = chronologicalAgeMonths;
-              
-              // Recalculate age difference and deficit status based on corrected chronological age
-              if (data.academic_age) {
-                recalculatedAgeDifference = calculateAgeDifference(data.academic_age, chronologicalAgeTenths);
-                recalculatedIsDeficit = isDeficit(data.academic_age, chronologicalAgeTenths);
-              }
-            }
+            // Use stored values directly from the database - they are already correct
+            const recalculatedChronologicalAge = data.chronological_age;
+            const recalculatedAgeDifference = data.age_difference;
+            const recalculatedIsDeficit = data.is_deficit;
             
             studentData[studentId] = {
               name: studentName,
@@ -639,29 +615,17 @@ export function AssessmentViewTab({
                                       {student.academicAges ? convertTenthsToYearsMonths(student.academicAges.academicAge) : ''}
                                     </td>
                                     <td className="py-3 px-4 text-center text-sm">
-                                      {student.academicAges?.chronologicalAge ? (() => {
-                                        // Convert from months format (7.03) back to tenths format (7.3)
-                                        const monthsFormat = student.academicAges.chronologicalAge;
-                                        const parts = monthsFormat.split('.');
-                                        if (parts.length !== 2) return monthsFormat;
-                                        const years = parseInt(parts[0], 10);
-                                        const months = parseInt(parts[1], 10);
-                                        // Convert months to tenths approximation
-                                        let tenths = 0;
-                                        if (months === 1) tenths = 1;
-                                        else if (months === 2) tenths = 2;
-                                        else if (months === 3 || months === 4) tenths = 3;
-                                        else if (months === 5) tenths = 4;
-                                        else if (months === 6) tenths = 5;
-                                        else if (months === 7) tenths = 6;
-                                        else if (months === 8) tenths = 7;
-                                        else if (months === 9 || months === 10) tenths = 8;
-                                        else if (months === 11) tenths = 9;
-                                        return `${years}.${tenths}`;
-                                      })() : ''}
+                                      {student.academicAges?.chronologicalAge}
                                     </td>
                                     <td className="py-3 px-4 text-center text-sm">
-                                      {student.academicAges?.chronologicalAge ? formatChronologicalAge(student.academicAges.chronologicalAge) : ''}
+                                      {student.academicAges?.chronologicalAge ? (() => {
+                                        const age = student.academicAges.chronologicalAge;
+                                        const parts = age.split('.');
+                                        if (parts.length !== 2) return age;
+                                        const years = parseInt(parts[0], 10);
+                                        const months = parseInt(parts[1], 10);
+                                        return `${years} years ${months} months`;
+                                      })() : ''}
                                     </td>
                                     <td className="py-3 px-4 text-center text-sm">
                                       {student.academicAges?.ageDifference && (
@@ -685,8 +649,60 @@ export function AssessmentViewTab({
                                               : "bg-green-100 text-green-800 hover:bg-green-100"
                                           }
                                         >
-                                          {student.academicAges.isDeficit ? '-' : ''}
-                                          {convertTenthsToYearsMonths(student.academicAges.ageDifference.replace('-', ''))}
+                                          {(() => {
+                                            // Calculate the difference directly in months for accuracy
+                                            const academicAge = student.academicAges.academicAge;
+                                            const chronologicalAge = student.academicAges.chronologicalAge;
+                                            
+                                            // Convert both ages to total months
+                                            const academicTotalMonths = convertAgeToTotalMonths(academicAge);
+                                            const chronologicalTotalMonths = convertChronologicalAgeToTotalMonths(chronologicalAge);
+                                            
+                                            if (academicTotalMonths === null || chronologicalTotalMonths === null) {
+                                              return "Cannot calculate";
+                                            }
+                                            
+                                            // Calculate difference in months
+                                            const diffMonths = academicTotalMonths - chronologicalTotalMonths;
+                                            const isNegative = diffMonths < 0;
+                                            const absDiffMonths = Math.abs(diffMonths);
+                                            
+                                            // Convert back to years and months
+                                            const years = Math.floor(absDiffMonths / 12);
+                                            const months = absDiffMonths % 12;
+                                            
+                                            const result = `${years} years ${months} months`;
+                                            return isNegative ? `-${result}` : result;
+                                            
+                                            // Helper function to convert academic age (tenths format) to total months
+                                            function convertAgeToTotalMonths(age: string): number | null {
+                                              const parts = age.split('.');
+                                              if (parts.length !== 2) return null;
+                                              
+                                              const years = parseInt(parts[0], 10);
+                                              const tenths = parseInt(parts[1], 10);
+                                              
+                                              // Convert tenths to months using standard mapping
+                                              const monthsMap: { [key: number]: number } = {
+                                                0: 0, 1: 1, 2: 2, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 10, 9: 11
+                                              };
+                                              const months = monthsMap[tenths] || 0;
+                                              
+                                              return years * 12 + months;
+                                            }
+                                            
+                                            // Helper function to convert chronological age (months format) to total months
+                                            function convertChronologicalAgeToTotalMonths(age: string): number | null {
+                                              const parts = age.split('.');
+                                              if (parts.length !== 2) return null;
+                                              
+                                              const years = parseInt(parts[0], 10);
+                                              const months = parseInt(parts[1], 10);
+                                              
+                                              // Chronological age is stored in years.months format (e.g., 7.03 = 7 years 3 months)
+                                              return years * 12 + months;
+                                            }
+                                          })()}
                                         </Badge>
                                       )}
                                     </td>
