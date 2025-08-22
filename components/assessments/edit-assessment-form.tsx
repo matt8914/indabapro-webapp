@@ -21,8 +21,10 @@ import {
   convertToOneMinuteReadingAge,
   convertToYoungsGroupReadingAge,
   convertTenthsToYearsMonths,
+  convertSpellingAgeToYearsMonths,
   calculateChronologicalAge,
   calculateAgeDifference,
+  calculateAgeDifferenceInMonths,
   isDeficit
 } from "@/utils/academic-age-utils";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +77,9 @@ interface AcademicAgeScoresState {
     rawScore: string;
     academicAge: string;
     chronologicalAge: string;
+    chronologicalAgeMonths?: string;
     ageDifference: string;
+    ageDifferenceMonths?: string;
     isDeficit: boolean;
   };
 }
@@ -145,6 +149,27 @@ export function EditAssessmentForm({
   const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
+  // Local formatting function to match Record Assessment display
+  const formatAgeDifference = (ageDifferenceMonths: string): string => {
+    if (!ageDifferenceMonths || ageDifferenceMonths === "Cannot calculate") return ageDifferenceMonths;
+    
+    const isNegative = ageDifferenceMonths.startsWith('-');
+    const cleanValue = isNegative ? ageDifferenceMonths.substring(1) : ageDifferenceMonths;
+    
+    const parts = cleanValue.split('.');
+    if (parts.length !== 2) return ageDifferenceMonths;
+    
+    const years = parseInt(parts[0], 10);
+    const months = parseInt(parts[1], 10);
+    
+    if (years === 0 && months === 0) return "0 years 0 months";
+    
+    // Always show both years and months in consistent format
+    const result = `${years} years ${months} months`;
+    
+    return isNegative ? `-${result}` : result;
+  };
+
   // Initialize scores from existing data
   useEffect(() => {
     if (isAcademicAgeAssessment) {
@@ -156,13 +181,26 @@ export function EditAssessmentForm({
           (score as AcademicAgeScore).student_id === student.id
         ) as AcademicAgeScore | undefined;
         
+        const chronologicalAge = existingScore ? existingScore.chronological_age : 
+          (student.date_of_birth ? calculateChronologicalAge(student.date_of_birth, testDate) : "");
+        const chronologicalAgeMonths = student.date_of_birth 
+          ? calculateChronologicalAge(student.date_of_birth, testDate, 'months')
+          : "";
+        const academicAge = existingScore ? existingScore.academic_age : "";
+        
+        // Calculate ageDifferenceMonths for proper display
+        const ageDifferenceMonths = academicAge && chronologicalAgeMonths
+          ? calculateAgeDifferenceInMonths(academicAge, chronologicalAgeMonths)
+          : "";
+
         initialScores[student.id] = {
           id: existingScore?.id,
           rawScore: existingScore ? String(existingScore.raw_score) : "",
-          academicAge: existingScore ? existingScore.academic_age : "",
-          chronologicalAge: existingScore ? existingScore.chronological_age : 
-            (student.date_of_birth ? calculateChronologicalAge(student.date_of_birth, testDate) : ""),
+          academicAge,
+          chronologicalAge,
+          chronologicalAgeMonths,
           ageDifference: existingScore ? existingScore.age_difference : "",
+          ageDifferenceMonths,
           isDeficit: existingScore ? existingScore.is_deficit : false
         };
       });
@@ -277,8 +315,9 @@ export function EditAssessmentForm({
     const student = students.find(s => s.id === studentId);
     if (!student || !student.date_of_birth) return;
     
-    // Calculate chronological age
+    // Calculate chronological age in both formats
     const chronologicalAge = calculateChronologicalAge(student.date_of_birth, testDate);
+    const chronologicalAgeMonths = calculateChronologicalAge(student.date_of_birth, testDate, 'months');
     
     // Calculate academic age based on assessment type
     let academicAge = "";
@@ -311,6 +350,11 @@ export function EditAssessmentForm({
       ? calculateAgeDifference(academicAge, chronologicalAge)
       : "";
     
+    // Calculate difference in months format for display
+    const ageDifferenceMonths = academicAge && chronologicalAgeMonths
+      ? calculateAgeDifferenceInMonths(academicAge, chronologicalAgeMonths)
+      : "";
+    
     const isDeficitValue = academicAge && chronologicalAge
       ? isDeficit(academicAge, chronologicalAge)
       : false;
@@ -325,7 +369,9 @@ export function EditAssessmentForm({
           rawScore: value,
           academicAge,
           chronologicalAge,
+          chronologicalAgeMonths,
           ageDifference,
+          ageDifferenceMonths,
           isDeficit: isDeficitValue
         }
       };
@@ -430,15 +476,19 @@ export function EditAssessmentForm({
         if (student?.date_of_birth && currentScore.rawScore) {
           // Recalculate chronological age with the new date
           const chronologicalAge = calculateChronologicalAge(student.date_of_birth, newDate);
+          const chronologicalAgeMonths = calculateChronologicalAge(student.date_of_birth, newDate, 'months');
           const academicAge = currentScore.academicAge;
           const ageDiff = calculateAgeDifference(academicAge, chronologicalAge);
+          const ageDiffMonths = calculateAgeDifferenceInMonths(academicAge, chronologicalAgeMonths);
           const deficit = isDeficit(academicAge, chronologicalAge);
           
           // Create updated record
           updatedScores[studentId] = {
             ...currentScore,
             chronologicalAge,
+            chronologicalAgeMonths,
             ageDifference: ageDiff,
+            ageDifferenceMonths: ageDiffMonths,
             isDeficit: deficit
           };
         } else {
@@ -749,9 +799,22 @@ export function EditAssessmentForm({
                           {(session.assessment_types.name === "Schonell Spelling A" || session.assessment_types.name === "Schonell Spelling B") && "(0-80)"}
                         </div>
                       </th>
-                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Academic Age</th>
-                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Chronological Age</th>
-                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">Difference</th>
+                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                        <div className="text-sm">Academic Age</div>
+                        <div className="text-xs text-gray-500">(Years.Tenths)</div>
+                      </th>
+                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                        <div className="text-sm">Academic Age</div>
+                        <div className="text-xs text-gray-500">(Years & Months)</div>
+                      </th>
+                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                        <div className="text-sm">Chronological Age</div>
+                        <div className="text-xs text-gray-500">(Years & Months)</div>
+                      </th>
+                      <th className="py-2 px-4 text-center text-sm font-medium text-gray-500">
+                        <div className="text-sm">Difference</div>
+                        <div className="text-xs text-gray-500">(Years & Months)</div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -775,15 +838,18 @@ export function EditAssessmentForm({
                           />
                         </td>
                         <td className="py-3 px-4 text-center text-sm">
+                          {academicAgeScores[student.id]?.academicAge || ''}
+                        </td>
+                        <td className="py-3 px-4 text-center text-sm">
                           {academicAgeScores[student.id]?.academicAge ? 
                             getFormattedAcademicAge(academicAgeScores[student.id].academicAge) : ''}
                         </td>
                         <td className="py-3 px-4 text-center text-sm">
                           {academicAgeScores[student.id]?.chronologicalAge ? 
-                            convertTenthsToYearsMonths(academicAgeScores[student.id].chronologicalAge) : ''}
+                            convertSpellingAgeToYearsMonths(academicAgeScores[student.id].chronologicalAge) : ''}
                         </td>
                         <td className="py-3 px-4 text-center text-sm">
-                          {academicAgeScores[student.id]?.ageDifference && (
+                          {academicAgeScores[student.id]?.ageDifferenceMonths && (
                             <Badge
                               className={
                                 academicAgeScores[student.id].isDeficit
@@ -791,8 +857,7 @@ export function EditAssessmentForm({
                                   : "bg-green-100 text-green-800 hover:bg-green-100"
                               }
                             >
-                              {academicAgeScores[student.id].isDeficit ? '-' : ''}
-                              {convertTenthsToYearsMonths(academicAgeScores[student.id].ageDifference.replace('-', ''))}
+                              {formatAgeDifference(academicAgeScores[student.id].ageDifferenceMonths)}
                             </Badge>
                           )}
                         </td>
